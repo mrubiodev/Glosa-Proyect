@@ -1,0 +1,44 @@
+# Preset base: todo visible, pensado para aprender y para demos.
+name: didactico
+mode: didactic
+adapters:
+  storage: sqlite
+  queue: sqlite
+  index: sqlite-fts5
+  embedder: none
+  extractors: [markdown, text]
+  chunker: headings
+  authenticator: token
+retrieval:
+  strategy: text
+  k: 5
+  reranker: null
+mcp:
+  language: es
+  tools:
+    buscar: "Busca fragmentos relevantes en los documentos de la colección. Úsala antes de responder preguntas sobre su contenido."
+    leer_documento: "Devuelve el texto completo de un documento. Úsala cuando necesites más contexto que el fragmento encontrado."
+    listar_documentos: "Lista los documentos disponibles en la colección. Úsala para saber qué información existe."
+policy:
+  query_logging: full
+  retention_days: null
+  version_retention: all
+  version_keep: null
+  hash_chain: true
+  token_default_ttl_days: null
+  limits:
+    max_file_mb: 10
+    max_documents: 1000
+    max_queue_per_collection: 100
+metadata: []
+branding:
+  name: "Glosa"
+  logo: null
+  primary_color: "#2563eb"
+  language: es
+  didactic_panels: true
+evaluation:
+  dataset: examples/eval.yaml
+demo:
+  seed_data: true
+  demo_token: true

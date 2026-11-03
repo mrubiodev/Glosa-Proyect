@@ -1,0 +1,80 @@
+# Glosa — docker compose (ejecutar desde `backend/`).
+#
+#   docker compose up                      valida la plantilla activa y termina
+#   GLOSA_TEMPLATE=profesional docker compose up
+#   docker compose --profile test run --rm tests
+#
+# Las plantillas de cliente se montan desde ./examples/templates (solo lectura).
+# Para usar las tuyas, cambia ese volumen o apúntalo a tu repositorio privado.
+#
+# Los servicios api, mcp y worker están definidos pero agrupados en el perfil
+# "pendiente": sus adaptadores todavía no están implementados (docs/SPEC.md §17).
+# Cuando existan, basta con quitar la línea `profiles` de cada uno.
+
+name: glosa
+
+x-glosa: &glosa
+  image: glosa:dev
+  build:
+    context: .
+    target: runtime
+  environment:
+    GLOSA_TEMPLATE: ${GLOSA_TEMPLATE:-didactico}
+    GLOSA_TEMPLATE_DIRS: /app/templates
+    GLOSA_DATA_DIR: /data
+  volumes:
+    - ./examples/templates:/app/templates:ro
+  # Endurecimiento básico del contenedor
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop: [ALL]
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  # Valida la plantilla activa (esquema y guardia de producción) y termina.
+  check:
+    <<: *glosa
+    command: ["python", "-m", "glosa_app", "check"]
+
+  # Ejecuta los tests dentro de un contenedor.
+  tests:
+    image: glosa:test
+    build:
+      context: .
+      target: test
+    profiles: ["test"]
+
+  # --- Pendientes de implementar -------------------------------------------
+  api:
+    <<: *glosa
+    profiles: ["pendiente"]
+    command: ["python", "-m", "glosa_http_api"]
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./examples/templates:/app/templates:ro
+      - glosa-data:/data
+
+  mcp:
+    <<: *glosa
+    profiles: ["pendiente"]
+    command: ["python", "-m", "glosa_mcp_server"]
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./examples/templates:/app/templates:ro
+      - glosa-data:/data
+
+  worker:
+    <<: *glosa
+    profiles: ["pendiente"]
+    command: ["python", "-m", "glosa_worker"]
+    volumes:
+      - ./examples/templates:/app/templates:ro
+      - glosa-data:/data
+    # El worker puede escalarse: docker compose --profile pendiente up --scale worker=3
+
+volumes:
+  glosa-data:

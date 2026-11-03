@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "glosa-http-api"
+version = "0.1.0"
+description = "API HTTP de gestión (capa fina)"
+requires-python = ">=3.11"
+dependencies = ["glosa-core"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/glosa_http_api"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

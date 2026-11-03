@@ -1,0 +1,117 @@
+# Contrato público de la API de gestión (borrador).
+# Fuente de verdad del cliente del frontend. Ver la sección 13 de SPEC.md
+# para la lista completa de endpoints; aquí solo está el esqueleto inicial.
+openapi: 3.1.0
+info:
+  title: Glosa — API de gestión
+  version: 0.1.0
+  description: >
+    Las escrituras son asíncronas: responden 202 con un job_id.
+    Todas las respuestas incluyen la cabecera X-Correlation-Id.
+servers:
+  - url: http://localhost:8000
+security:
+  - bearerAuth: []
+tags:
+  - name: collections
+  - name: documents
+  - name: jobs
+paths:
+  /v1/collections:
+    post:
+      tags: [collections]
+      summary: Crear colección
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        "201":
+          description: Colección creada
+  /v1/collections/{collection_id}/documents:
+    post:
+      tags: [documents]
+      summary: Subir documento (se encola)
+      parameters:
+        - $ref: "#/components/parameters/CollectionId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        "202":
+          description: Trabajo aceptado
+          headers:
+            X-Correlation-Id:
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobAccepted"
+        "403":
+          description: Permiso insuficiente
+        "429":
+          description: Cola de la colección llena
+  /v1/collections/{collection_id}/jobs/{job_id}:
+    get:
+      tags: [jobs]
+      summary: Estado de un trabajo
+      parameters:
+        - $ref: "#/components/parameters/CollectionId"
+        - name: job_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Estado del trabajo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    CollectionId:
+      name: collection_id
+      in: path
+      required: true
+      schema: { type: string }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema: { type: string }
+  schemas:
+    JobAccepted:
+      type: object
+      required: [job_id, correlation_id]
+      properties:
+        job_id: { type: string }
+        correlation_id: { type: string }
+        status_url: { type: string }
+    Job:
+      type: object
+      required: [id, type, status]
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [ingest, modify, reindex, delete] }
+        status:
+          type: string
+          enum: [queued, running, succeeded, failed, dead, cancelled]
+        attempts: { type: integer }
+        error: { type: string, nullable: true }

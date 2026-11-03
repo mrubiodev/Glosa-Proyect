@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "glosa-retrieval"
+version = "0.1.0"
+description = "Estrategias de búsqueda"
+requires-python = ">=3.11"
+dependencies = ["glosa-core"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/glosa_retrieval"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "glosa-core"
+version = "0.1.0"
+description = "Dominio, permisos, puertos y casos de uso del proyecto Glosa"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/glosa_core"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

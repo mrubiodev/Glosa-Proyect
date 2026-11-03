@@ -1,0 +1,20 @@
+# Preset profesional: hereda del didáctico y endurece la política.
+# Los adaptadores siguen siendo los disponibles hoy (SQLite). Cuando existan
+# los de Postgres/pgvector u OIDC, se cambian aquí o en la plantilla del cliente.
+name: profesional
+extends: didactico
+mode: production
+policy:
+  query_logging: hash_only
+  retention_days: 365
+  token_default_ttl_days: 90
+  limits:
+    max_file_mb: 25
+    max_documents: 10000
+    max_queue_per_collection: 500
+branding:
+  name: "Servicio de conocimiento"
+  didactic_panels: false
+demo:
+  seed_data: false
+  demo_token: false

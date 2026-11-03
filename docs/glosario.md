@@ -1,0 +1,32 @@
+# Glosario
+
+- **RAG:** técnica que recupera fragmentos relevantes y los añade al prompt antes de generar la respuesta.
+- **MCP:** protocolo estándar para que un modelo use herramientas y fuentes de datos externas.
+- **Chunk (fragmento):** trozo de un documento que se indexa y se recupera por separado.
+- **Embedding:** representación numérica del significado de un texto para buscar por similitud.
+- **FTS5:** búsqueda de texto completo integrada en SQLite.
+- **Búsqueda híbrida:** combina búsqueda por texto y búsqueda vectorial.
+- **Reranker:** modelo que reordena los resultados iniciales según su relevancia real.
+- **Multitenancy:** varios usuarios comparten el sistema con datos totalmente aislados.
+- **Scope:** permiso concreto que lleva un token (por ejemplo `read`).
+- **Job (trabajo):** unidad de trabajo encolada que ejecuta el worker.
+- **Worker:** proceso que consume la cola y ejecuta los trabajos.
+- **Lease:** posesión temporal de un trabajo por parte de un worker; si caduca, el trabajo se reasigna.
+- **Idempotencia:** ejecutar una operación varias veces produce el mismo resultado que ejecutarla una.
+- **Cola de fallidos (`dead`):** trabajos que agotaron sus reintentos y esperan revisión.
+- **Correlation ID:** identificador que une todos los pasos de una misma operación.
+- **Registro de solo añadir:** registro en el que las entradas nunca se editan ni se borran.
+- **Encadenado de hashes:** cada entrada incluye el hash de la anterior, de modo que alterar una invalida las siguientes.
+- **OpenAPI:** formato estándar para describir una API HTTP y generar clientes automáticamente.
+- **OAuth 2.1 / OIDC:** estándares de autorización y de identidad para acceso delegado.
+- **Inyección de prompts:** texto malicioso dentro de un documento que intenta dar órdenes al modelo que lo lee.
+- **Puerto / adaptador:** interfaz definida por el dominio / implementación concreta que la cumple.
+- **Plantilla:** fichero YAML que adapta el sistema a un cliente o proyecto eligiendo adaptadores y ajustes.
+- **Preset:** plantilla incluida en el proyecto (`didactico`, `profesional`) de la que heredan las de cliente.
+- **Guardia de producción:** comprobación al arrancar que impide usar en producción una configuración de demo.
+- **Registro de adaptadores:** tabla de adaptadores disponibles por nombre; permite añadir los de un cliente como plugins.
+- **Código disponible (source-available):** el código es público, pero la licencia limita quién puede usarlo gratis; no es open source en sentido estricto.
+- **PolyForm Small Business:** licencia que permite el uso gratuito a organizaciones por debajo de un tamaño e ingresos concretos.
+- **Licencia comercial:** contrato de pago para quien no cumple los límites de la licencia pública.
+- **CLA:** acuerdo por el que quien contribuye concede al titular los derechos necesarios para relicenciar su código.
+- **Glosa:** nombre del proyecto. Anotación que explica un texto, como la capa didáctica explica cómo funciona el sistema.

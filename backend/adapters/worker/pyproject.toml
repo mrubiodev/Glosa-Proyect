@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "glosa-worker"
+version = "0.1.0"
+description = "Worker de la cola de trabajos (capa fina)"
+requires-python = ">=3.11"
+dependencies = ["glosa-core"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/glosa_worker"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

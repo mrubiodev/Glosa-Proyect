@@ -1,0 +1,17 @@
+# Plantilla de cliente de ejemplo ("Acme Legal", ficticio).
+# Solo declara lo que cambia respecto al preset `profesional`.
+name: acme-legal
+extends: profesional
+branding:
+  name: "Acme Legal — Conocimiento"
+  primary_color: "#0f766e"
+  language: es
+mcp:
+  tools:
+    buscar: "Busca cláusulas y precedentes en los contratos de Acme Legal."
+policy:
+  retention_days: 730
+  token_default_ttl_days: 60
+metadata: [fecha_contrato, jurisdiccion, cliente]
+evaluation:
+  dataset: examples/acme-legal/eval.yaml
