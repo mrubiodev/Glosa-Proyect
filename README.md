@@ -1,3 +1,5 @@
+![Glosa — conocimiento documental conectado](docs/images/glosa-banner.svg)
+
 # Glosa
 
 **Sube tus documentos y obtén un RAG consultable y un servidor MCP al que se conecta cualquier LLM, con permisos, cola de trabajos y trazabilidad completa.**
