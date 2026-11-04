@@ -25,3 +25,6 @@ Cada decisión relevante se documenta en un fichero numerado. Estados: *Propuest
 | [0019](0019-codigo-disponible-polyform-small-business-mas-lice.md) | Código disponible: PolyForm Small Business más licencia comercial y CLA | Propuesta |
 | [0020](0020-nombre-del-proyecto-glosa.md) | Nombre del proyecto: Glosa | Propuesta |
 | [0021](0021-imagen-docker-multietapa-usuario-sin-privilegios-y.md) | Imagen Docker multietapa, usuario sin privilegios y sin secretos | Propuesta |
+| [0022](0022-los-casos-de-uso-reciben-un-requestcontext-y-regis.md) | Los casos de uso reciben un `RequestContext` y registran su propio resultado | Propuesta |
+| [0023](0023-fragmentos-con-identificador-determinista-y-limpie.md) | Fragmentos con identificador determinista y limpieza previa al indexar | Propuesta |
+| [0024](0024-pruebas-de-contrato-para-los-adaptadores-de-la-col.md) | Pruebas de contrato para los adaptadores de la cola | Propuesta |

@@ -20,7 +20,7 @@ Dockerfile · docker-compose.yml · Makefile
 ```bash
 python -m venv .venv && source .venv/bin/activate
 make install
-make test        # 51 tests
+make test        # 92 tests
 make check       # valida la plantilla activa
 ```
 
@@ -58,10 +58,12 @@ Se comprueban automáticamente en `tests/test_architecture.py`:
 
 ## Estado
 
+La lista completa y al día de lo que falta está en [`../docs/PENDIENTE.md`](../docs/PENDIENTE.md).
+
 | Pieza | Estado |
 |-------|--------|
 | `core`: entidades, puertos, autorización, tokens, encadenado de hashes | Implementado, con tests |
-| `core`: casos de uso | Pendiente |
+| `core`: casos de uso | 9 de 21 implementados, con las 14 pruebas obligatorias |
 | `templates`: carga con herencia, esquema, guardia de producción, registro de adaptadores | Implementado, con tests |
 | `app`: orden `check` | Implementado, con tests |
 | `ingest`, `retrieval`, `storage`, `explain` | Esqueleto |

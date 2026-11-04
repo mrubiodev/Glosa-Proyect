@@ -17,3 +17,23 @@ class PermissionDenied(DomainError):
 
 class AuthenticationFailed(DomainError):
     """Las credenciales no son válidas."""
+
+
+class NotFound(DomainError):
+    """El recurso no existe (o no es visible para el actor)."""
+
+
+class InvalidRequest(DomainError):
+    """La petición no es válida."""
+
+
+class CapacityExceeded(DomainError):
+    """Se superó un límite de la colección (documentos, tamaño, cola)."""
+
+
+class PermanentJobError(DomainError):
+    """Fallo de un trabajo que no tiene sentido reintentar."""
+
+
+class UnsupportedSource(PermanentJobError):
+    """Ningún extractor admite el tipo de documento."""

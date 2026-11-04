@@ -94,11 +94,25 @@ class User:
 
 
 @dataclass(frozen=True)
+class CollectionSettings:
+    """Ajustes por colección (SPEC §10.6 y §14). No pueden debilitar la plantilla activa."""
+
+    query_logging: str = "full"  # "full" | "hash_only"
+    retention_days: int | None = None
+    version_retention: str = "all"  # "all" | "last_n"
+    version_keep: int | None = None
+    hash_chain: bool = True
+    max_file_mb: int = 10
+    max_documents: int = 1000
+    max_queue_per_collection: int = 100
+
+
+@dataclass(frozen=True)
 class Collection:
     id: str
     name: str
     created_at: datetime
-    settings: dict[str, Any] = field(default_factory=dict)
+    settings: CollectionSettings = field(default_factory=CollectionSettings)
 
 
 @dataclass(frozen=True)
@@ -179,6 +193,7 @@ class Job:
     actor: Actor
     correlation_id: str
     created_at: datetime
+    version: int | None = None
     priority: int = 100
     attempts: int = 0
     max_attempts: int = 5

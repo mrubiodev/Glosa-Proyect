@@ -1,10 +1,12 @@
-# Glosa — Especificación v0.4.1
+# Glosa — Especificación v0.4.2
 
 > Estado: borrador · Idioma: español · Formato: Markdown versionado
 >
 > **Cambios respecto a v0.3:** se añade un **sistema de plantillas** para adaptar el sistema a cualquier cliente o proyecto sin tocar código, y un **modelo de licencia y comercial** (código disponible: gratis para personas y pequeñas empresas, de pago para las demás). Ver [§21 Registro de cambios](#21-registro-de-cambios).
 >
 > **v0.4.1:** el proyecto se llama **Glosa** (la glosa es la anotación que explica un texto, que es lo que hace la capa didáctica). Se añaden `Dockerfile`, `docker-compose.yml` y la orden `check` para validar la plantilla activa (§17).
+>
+> **v0.4.2:** se completan los puertos que faltaban (identificadores, colecciones, miembros) y se implementan los primeros casos de uso en `core`, con las 14 pruebas obligatorias de §14. Ver el estado real en [`PENDIENTE.md`](PENDIENTE.md).
 
 ## 1. Objetivo
 
@@ -137,13 +139,14 @@ La **composición** (inyectar adaptadores concretos en los casos de uso) ocurre 
 | Entidad            | Campos principales                                                                       |
 |--------------------|------------------------------------------------------------------------------------------|
 | `User`             | `id`, `email`, `created_at`                                                              |
-| `Collection`       | `id`, `name`, `settings`, `created_at`                                                   |
+| `Collection`       | `id`, `name`, `settings` (`CollectionSettings`), `created_at`                            |
 | `Membership`       | `user_id`, `collection_id`, `role` (`owner` / `editor` / `reader`)                       |
 | `Document`         | `id`, `collection_id`, `title`, `source_type`, `current_version`, `status`, `metadata`   |
 | `DocumentVersion`  | `document_id`, `version`, `content_hash`, `size`, `created_by`, `created_at`, `content_ref` |
 | `Chunk`            | `id`, `document_id`, `version`, `collection_id`, `text`, `position`, `metadata`          |
 | `SearchHit`        | `chunk`, `score`, `strategy` (`text` / `vector` / `hybrid`)                              |
 | `AccessToken`      | `id`, `collection_id`, `created_by`, `hash`, `scopes`, `expires_at`, `revoked`           |
+| `CollectionSettings` | `query_logging`, `retention_days`, `version_retention`, `version_keep`, `hash_chain`, `max_file_mb`, `max_documents`, `max_queue_per_collection` |
 | `Job`              | ver [§9](#9-cola-de-trabajos)                                                            |
 | `OperationEntry`   | ver [§10](#10-registro-de-operaciones-y-trazabilidad)                                    |
 
@@ -206,7 +209,7 @@ La autenticación se define como puerto (`Authenticator`): cambiar el mecanismo 
 
 ## 8. Puertos (interfaces)
 
-Definidos en `core/ports/`. Ejemplo en Python con `Protocol`:
+Definidos en `core/ports/` (`ports.py`). Ejemplo en Python con `Protocol`:
 
 ```python
 class TextExtractor(Protocol):
@@ -216,14 +219,22 @@ class TextExtractor(Protocol):
 class Chunker(Protocol):
     def split(self, text: str) -> list[ChunkDraft]: ...
 
+class CollectionRepository(Protocol):
+    def add(self, collection: Collection) -> None: ...
+    def get(self, collection_id: str) -> Collection | None: ...
+    def delete(self, collection_id: str) -> None: ...
+    def update_settings(self, collection_id: str, settings: CollectionSettings) -> None: ...
+
 class DocumentRepository(Protocol):
     def add(self, doc: Document, version: DocumentVersion, content: bytes) -> None: ...
-    def add_version(self, doc_id: str, version: DocumentVersion, content: bytes) -> None: ...
+    def add_version(self, collection_id: str, doc_id: str, version: DocumentVersion, content: bytes) -> None: ...
     def get(self, collection_id: str, doc_id: str) -> Document | None: ...
     def get_content(self, collection_id: str, doc_id: str, version: int | None) -> bytes | None: ...
     def history(self, collection_id: str, doc_id: str) -> list[DocumentVersion]: ...
-    def list(self, collection_id: str) -> list[Document]: ...
-    def mark_deleted(self, collection_id: str, doc_id: str) -> None: ...
+    def list(self, collection_id: str) -> list[Document]: ...          # sin los borrados
+    def update_status(self, collection_id: str, doc_id: str, status: DocumentStatus,
+                      current_version: int | None = None) -> None: ...
+    def mark_deleted(self, collection_id: str, doc_id: str, at: datetime) -> None: ...
 
 class ChunkIndex(Protocol):
     def index(self, chunks: list[Chunk]) -> None: ...
@@ -233,6 +244,7 @@ class ChunkIndex(Protocol):
 
 class JobQueue(Protocol):
     def enqueue(self, job: Job) -> Job: ...                      # respeta idempotency_key
+    def find_by_key(self, collection_id: str, key: str) -> Job | None: ...
     def claim(self, worker_id: str, lease_seconds: int) -> Job | None: ...
     def heartbeat(self, job_id: str, worker_id: str) -> None: ...
     def ack(self, job_id: str, result: JobResult) -> None: ...
@@ -242,13 +254,19 @@ class JobQueue(Protocol):
     def list(self, collection_id: str, status: str | None, limit: int) -> list[Job]: ...
 
 class OperationLog(Protocol):                                     # solo añadir
-    def record(self, entry: OperationEntry) -> None: ...
+    def record(self, entry: OperationEntry) -> None: ...         # sella la entrada (hash) al guardarla
     def query(self, collection_id: str, filters: OperationFilter, limit: int) -> list[OperationEntry]: ...
-    def verify_chain(self, collection_id: str) -> ChainReport: ...  # si el encadenado está activo
+    def verify_chain(self, collection_id: str) -> ChainReport: ...
 
-class AccessRepository(Protocol):
+class AccessRepository(Protocol):                                 # miembros y tokens
     def role_of(self, user_id: str, collection_id: str) -> Role | None: ...
+    def add_member(self, user_id: str, collection_id: str, role: Role) -> None: ...
+    def remove_member(self, user_id: str, collection_id: str) -> None: ...
+    def members(self, collection_id: str) -> list[Membership]: ...
+    def collections_of(self, user_id: str) -> list[str]: ...
     def find_token(self, token_hash: str) -> AccessToken | None: ...
+    def get_token(self, collection_id: str, token_id: str) -> AccessToken | None: ...
+    def list_tokens(self, collection_id: str) -> list[AccessToken]: ...
     def save_token(self, token: AccessToken) -> None: ...
     def revoke_token(self, token_id: str) -> None: ...
 
@@ -260,7 +278,12 @@ class Embedder(Protocol):             # opcional en v0.x
 
 class Clock(Protocol):                # para tests deterministas y marcas de tiempo
     def now(self) -> datetime: ...
+
+class IdGenerator(Protocol):          # identificadores y correlation_id
+    def new_id(self, prefix: str) -> str: ...
 ```
+
+Todo método que toca datos de una colección recibe su `collection_id`. Está pendiente un puerto de transacciones (`UnitOfWork`), ver [`PENDIENTE.md`](PENDIENTE.md).
 
 ### Adaptadores iniciales
 
@@ -272,9 +295,12 @@ class Clock(Protocol):                # para tests deterministas y marcas de tie
 | `ChunkIndex`         | SQLite FTS5                          | pgvector, híbrido, reranker          |
 | `JobQueue`           | Tabla en SQLite                      | Postgres, Redis, broker de mensajes  |
 | `OperationLog`       | Tabla en SQLite (solo inserciones)   | Almacén de logs externo              |
+| `CollectionRepository` | SQLite                             | Postgres                             |
 | `AccessRepository`   | SQLite                               | Postgres                             |
 | `Authenticator`      | API key / token estático             | OIDC, OAuth 2.1                      |
 | `Embedder`           | — (no incluido)                      | Local o API externa                  |
+| `Clock`              | `SystemClock` (en `core`)            | —                                    |
+| `IdGenerator`        | `UuidIds` (en `core`)                | —                                    |
 
 ## 9. Cola de trabajos
 
@@ -446,6 +472,14 @@ Cada caso de uso recibe un `Actor` ya identificado, **comprueba el permiso** con
 | `HandleDelete`     | Retirar del índice → marcar borrado → eliminar contenido según política de retención              |
 
 Los manejadores reciben sus puertos por constructor (inyección de dependencias) y son idempotentes: ejecutarlos dos veces deja el mismo estado final.
+
+**Mecánica común (implementada):**
+
+- Cada caso de uso recibe un `RequestContext` (actor, canal y `correlation_id`) y un `Kernel` con los servicios transversales (autorización, registrador, reloj, ids).
+- Una denegación de permiso deja una entrada `denied` en el registro de la colección afectada; un error de validación deja una entrada `failed`.
+- `HandleIngest` atiende los trabajos `ingest` y `modify`. Los fragmentos tienen identificador determinista (`<doc>:<versión>:<posición>`) y, antes de indexar, se limpia lo que hubiera dejado un intento interrumpido.
+- `ProcessNextJob` es lo que hace un worker en cada vuelta: toma un trabajo, lo despacha, y decide entre `ack`, reintento con espera creciente o `dead`. Actúa con la identidad y el `correlation_id` de quien encoló el trabajo. El adaptador `worker` solo lo llama en bucle.
+- Los errores permanentes (`PermanentJobError`) pasan a `dead` sin reintentos.
 
 ## 12. Servidor MCP (`adapters/mcp-server`)
 
@@ -753,6 +787,15 @@ A los usuarios y pequeñas empresas se les pide, sin obligación y sin que condi
 
 ## 21. Registro de cambios
 
+### v0.4.2
+- Puertos nuevos: `CollectionRepository`, `IdGenerator`; `AccessRepository` ampliado (miembros y consulta de tokens); `JobQueue.find_by_key`; `DocumentRepository.update_status`. Los métodos de `DocumentRepository` reciben siempre `collection_id`.
+- `Collection.settings` pasa a ser `CollectionSettings`; `Job` gana el campo `version`.
+- Casos de uso implementados en `core`: `CreateCollection`, `IssueToken`, `RevokeToken`, `SubmitDocument`, `SearchCollection`, `ReadDocument`, `ListDocuments`, `HandleIngest` (ingest y modify) y `ProcessNextJob`.
+- Dobles en memoria de todos los puertos y pruebas de contrato de la cola, reutilizables por los adaptadores reales.
+- Las 14 pruebas obligatorias de §14 tienen test (alcance parcial en 1, 4 y 6 hasta que existan los casos de uso de consulta de trabajos y registro).
+- Nuevo `docs/PENDIENTE.md`: lista viva de lo que falta.
+- ADRs 0022 a 0024.
+
 ### v0.4.1
 - El proyecto pasa a llamarse **Glosa**. Paquetes `glosa-*` (módulos `glosa_*`), variables `GLOSA_*`, prefijo de token `glosa_` y grupo de entry points `glosa.adapters`.
 - Nuevo `Dockerfile` multietapa y `docker-compose.yml` con los servicios `check` y `tests` operativos y `api`, `mcp` y `worker` definidos como pendientes (§17).
@@ -813,6 +856,9 @@ A los usuarios y pequeñas empresas se les pide, sin obligación y sin que condi
 | 0019 | Código disponible: PolyForm Small Business más licencia comercial y CLA | Gratis para pequeños, de pago para empresas, con derecho a relicenciar |
 | 0020 | Nombre del proyecto: Glosa                                      | Corto, castizo y describe la capa didáctica; sin producto de RAG/MCP con ese nombre en las búsquedas hechas. Pendientes marca y dominios |
 | 0021 | Imagen Docker multietapa, usuario sin privilegios y sin secretos | Imagen pequeña y segura; la configuración entra por entorno y volúmenes |
+| 0022 | Los casos de uso reciben un `RequestContext` y registran su propio resultado | Una sola forma de autorizar y de dejar rastro, igual para API, MCP y worker |
+| 0023 | Fragmentos con identificador determinista y limpieza previa al indexar | Reintentos y caídas del worker no dejan fragmentos duplicados ni huérfanos |
+| 0024 | Pruebas de contrato para los adaptadores de la cola                | Cualquier cola (memoria, SQLite, Postgres) debe cumplir las mismas garantías |
 
 ## 23. Glosario
 

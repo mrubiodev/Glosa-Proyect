@@ -26,3 +26,10 @@ def access():
 @pytest.fixture
 def authz(access):
     return AuthorizationService(access)
+
+
+@pytest.fixture
+def world():
+    from world import World
+
+    return World()

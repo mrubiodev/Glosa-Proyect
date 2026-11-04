@@ -8,7 +8,8 @@ Dominio, permisos, puertos y casos de uso. **No depende de ningún otro paquete 
 - Decide los permisos de usuarios y tokens (`authorization.py`).
 - Genera, hashea y autentica tokens de colección (`tokens.py`).
 - Encadena los hashes del registro de operaciones y los verifica (`chain.py`).
-- Ofrece dobles en memoria para tests (`testing.py`), reutilizables por otros paquetes.
+- Define los casos de uso (`usecases/`), que autorizan, actúan y dejan rastro en el registro de operaciones.
+- Ofrece dobles en memoria para tests (`testing.py`) y pruebas de contrato (`queue_contract.py`), reutilizables por otros paquetes.
 
 ## Por qué existe como pieza separada
 
@@ -31,8 +32,14 @@ Cualquier adaptador que cumpla un puerto de `ports.py`. El dominio no se entera.
 
 ## Estado
 
-Implementado: entidades, puertos, autorización, tokens, encadenado de hashes y 23 tests.
-Pendiente: casos de uso (`usecases/`), según el orden sugerido en su `__init__.py`.
+Implementado:
+
+- Entidades, puertos, autorización, tokens y encadenado de hashes.
+- Casos de uso: `CreateCollection`, `IssueToken`, `RevokeToken`, `SubmitDocument`, `SearchCollection`, `ReadDocument`, `ListDocuments`, `HandleIngest` y `ProcessNextJob`.
+- Dobles en memoria de todos los puertos (`testing.py`) y pruebas de contrato de la cola (`queue_contract.py`), pensados para que los adaptadores reales pasen las mismas pruebas.
+- Las 14 pruebas obligatorias de la spec.
+
+Pendiente: 12 casos de uso y varias tareas del núcleo. La lista completa y al día está en [`docs/PENDIENTE.md`](../../../docs/PENDIENTE.md).
 
 ## Tests
 

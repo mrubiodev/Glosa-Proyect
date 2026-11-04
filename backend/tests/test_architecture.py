@@ -3,6 +3,7 @@
 Si un paquete importa algo que no le toca, este test falla.
 """
 import ast
+import sys
 from pathlib import Path
 
 BACKEND = Path(__file__).resolve().parents[1]
@@ -63,8 +64,5 @@ def test_core_no_importa_nada_externo():
     external = set()
     for py in (BACKEND / "packages/core/src").rglob("*.py"):
         external |= {m for m in imported_modules(py) if not m.startswith("glosa_")}
-    stdlib = {
-        "__future__", "dataclasses", "datetime", "enum", "typing", "hashlib",
-        "json", "secrets",
-    }
-    assert external <= stdlib, f"core importa fuera de la librería estándar: {external - stdlib}"
+    third_party = external - set(sys.stdlib_module_names)
+    assert not third_party, f"core importa fuera de la librería estándar: {third_party}"
