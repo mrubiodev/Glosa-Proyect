@@ -130,19 +130,22 @@ class SubmitDocument(UseCase):
                 if doc is None:
                     raise NotFound("Documento no encontrado")
                 doc_id = doc.id
-                last = self._documents.history(collection_id, doc_id)[-1]
-                if last.content_hash == content_hash:
+                history = self._documents.history(collection_id, doc_id)
+                # "Sin cambios" se decide frente a la versión VIGENTE (la indexada), no frente
+                # a la última subida: si esa se canceló o falló, el contenido sigue sin indexar.
+                current = next((v for v in history if v.version == doc.current_version), None)
+                if current is not None and current.content_hash == content_hash:
                     self.k.recorder.record(
                         ctx,
                         self.action,
                         Outcome.SUCCEEDED,
                         collection_id=collection_id,
-                        target={"document_id": doc_id, "version": last.version},
+                        target={"document_id": doc_id, "version": current.version},
                         details={"unchanged": True},
                         started=started,
                     )
-                    return SubmitResult(doc_id, last.version, None, True, ctx.correlation_id)
-                version = last.version + 1
+                    return SubmitResult(doc_id, current.version, None, True, ctx.correlation_id)
+                version = history[-1].version + 1
                 job_type = JobType.MODIFY
                 self._documents.add_version(
                     collection_id,

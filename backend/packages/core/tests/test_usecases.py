@@ -21,7 +21,7 @@ from glosa_core.errors import (
     NotFound,
     PermissionDenied,
 )
-from world import World
+from glosa_core.testing_world import World
 
 
 def actions(entries):

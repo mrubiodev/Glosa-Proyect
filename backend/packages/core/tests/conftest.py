@@ -30,6 +30,6 @@ def authz(access):
 
 @pytest.fixture
 def world():
-    from world import World
+    from glosa_core.testing_world import World
 
     return World()

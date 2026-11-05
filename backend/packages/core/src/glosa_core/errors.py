@@ -27,6 +27,10 @@ class InvalidRequest(DomainError):
     """La petición no es válida."""
 
 
+class Conflict(DomainError):
+    """La operación choca con el estado actual del recurso."""
+
+
 class CapacityExceeded(DomainError):
     """Se superó un límite de la colección (documentos, tamaño, cola)."""
 

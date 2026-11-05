@@ -35,11 +35,11 @@ Cualquier adaptador que cumpla un puerto de `ports.py`. El dominio no se entera.
 Implementado:
 
 - Entidades, puertos, autorización, tokens y encadenado de hashes.
-- Casos de uso: `CreateCollection`, `IssueToken`, `RevokeToken`, `SubmitDocument`, `SearchCollection`, `ReadDocument`, `ListDocuments`, `HandleIngest` y `ProcessNextJob`.
-- Dobles en memoria de todos los puertos (`testing.py`) y pruebas de contrato de la cola (`queue_contract.py`), pensados para que los adaptadores reales pasen las mismas pruebas.
+- Casos de uso (14 de 22): colecciones y tokens, subir, leer, listar y buscar documentos, consulta y cancelación de trabajos, consulta y verificación del registro, `HandleIngest` y `ProcessNextJob`.
+- Dobles en memoria de todos los puertos (`testing.py`), un mundo completo reutilizable (`testing_world.py`) y pruebas de contrato de la cola (`queue_contract.py`), pensados para que los adaptadores reales pasen las mismas pruebas.
 - Las 14 pruebas obligatorias de la spec.
 
-Pendiente: 12 casos de uso y varias tareas del núcleo. La lista completa y al día está en [`docs/PENDIENTE.md`](../../../docs/PENDIENTE.md).
+Pendiente: 8 casos de uso y varias tareas del núcleo. La lista completa y al día está en [`docs/PENDIENTE.md`](../../../docs/PENDIENTE.md).
 
 ## Tests
 

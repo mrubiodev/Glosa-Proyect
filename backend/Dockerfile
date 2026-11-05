@@ -70,4 +70,4 @@ RUN pip install pytest
 COPY . /src/backend
 WORKDIR /src/backend
 
-CMD ["pytest", "packages/core/tests", "packages/templates/tests", "app/tests", "tests", "-q"]
+CMD ["pytest", "packages/core/tests", "packages/ingest/tests", "packages/templates/tests", "app/tests", "tests", "-q"]

@@ -38,9 +38,19 @@ def test_produccion_insegura_no_arranca(tmp_path, capsys):
     assert "query_logging" in capsys.readouterr().err
 
 
-def test_strict_falla_mientras_no_haya_adaptadores(capsys):
+def test_strict_falla_mientras_falten_adaptadores(capsys):
     assert main(["check", "--strict"], env={}) == 1
     assert "no está registrado" in capsys.readouterr().err
+
+
+def test_los_adaptadores_de_ingest_se_descubren_solos(capsys):
+    """Extractores y chunker ya están registrados por entry point; quedan los demás."""
+    assert main(["check", "--strict"], env={}) == 1
+    err = capsys.readouterr().err
+    for implemented in ("markdown", "text", "headings"):
+        assert f"'{implemented}'" not in err
+    for pending in ("sqlite", "sqlite-fts5", "none", "token"):
+        assert f"'{pending}'" in err
 
 
 def test_sin_orden_el_parser_exige_una(capsys):

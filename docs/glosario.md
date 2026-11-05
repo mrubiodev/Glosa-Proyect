@@ -30,3 +30,6 @@
 - **Licencia comercial:** contrato de pago para quien no cumple los límites de la licencia pública.
 - **CLA:** acuerdo por el que quien contribuye concede al titular los derechos necesarios para relicenciar su código.
 - **Glosa:** nombre del proyecto. Anotación que explica un texto, como la capa didáctica explica cómo funciona el sistema.
+- **Front matter:** bloque de metadatos YAML al principio de un documento Markdown, entre líneas `---`. No es contenido y se retira al extraer el texto.
+- **Ruta de encabezados:** cadena de títulos que contienen a un fragmento (`Contrato > Pagos`); permite citar de dónde viene.
+- **Entry point:** mecanismo de Python por el que un paquete instalado anuncia sus adaptadores sin que nadie los importe a mano.

@@ -56,6 +56,8 @@ class HandleIngest:
             self._step(ctx, "document.extract", job, target, {"chars": len(text)})
 
             drafts = self._chunker.split(text)
+            if not drafts:
+                raise PermanentJobError("El documento no contiene texto indexable")
             self._step(ctx, "document.chunk", job, target, {"chunks": len(drafts)})
 
             chunks = [

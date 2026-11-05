@@ -7,7 +7,7 @@ install:
 	pip install $(PACKAGES) pytest
 
 test:
-	pytest packages/core/tests packages/templates/tests app/tests tests
+	pytest packages/core/tests packages/ingest/tests packages/templates/tests app/tests tests
 
 check:
 	python -m glosa_app check

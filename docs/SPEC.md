@@ -1,4 +1,4 @@
-# Glosa — Especificación v0.4.2
+# Glosa — Especificación v0.4.3
 
 > Estado: borrador · Idioma: español · Formato: Markdown versionado
 >
@@ -7,6 +7,8 @@
 > **v0.4.1:** el proyecto se llama **Glosa** (la glosa es la anotación que explica un texto, que es lo que hace la capa didáctica). Se añaden `Dockerfile`, `docker-compose.yml` y la orden `check` para validar la plantilla activa (§17).
 >
 > **v0.4.2:** se completan los puertos que faltaban (identificadores, colecciones, miembros) y se implementan los primeros casos de uso en `core`, con las 14 pruebas obligatorias de §14. Ver el estado real en [`PENDIENTE.md`](PENDIENTE.md).
+>
+> **v0.4.3:** se completan las consultas de trabajos y del registro de operaciones (`GetJob`, `ListJobs`, `CancelJob`, `QueryOperations`, `VerifyOperationLog`) y se implementan los adaptadores de `ingest`: extractores de texto y Markdown y chunker por encabezados (§8).
 
 ## 1. Objetivo
 
@@ -302,6 +304,28 @@ Todo método que toca datos de una colección recibe su `collection_id`. Está p
 | `Clock`              | `SystemClock` (en `core`)            | —                                    |
 | `IdGenerator`        | `UuidIds` (en `core`)                | —                                    |
 
+### Adaptadores de `ingest` (implementados)
+
+Se registran por nombre con el entry point `glosa.adapters`, que descubre `glosa_app` al arrancar.
+
+| Nombre (plantilla)        | Puerto          | Qué hace                                                                       |
+|---------------------------|-----------------|--------------------------------------------------------------------------------|
+| `text`                    | `TextExtractor` | Texto plano UTF-8 (con o sin BOM); normaliza saltos de línea y quita bytes nulos |
+| `markdown`                | `TextExtractor` | Como `text`, y además retira el bloque de metadatos YAML (*front matter*) inicial |
+| `headings`                | `Chunker`       | Trocea por encabezados Markdown y empaqueta párrafos hasta `max_chars` (1200 por defecto) |
+
+Reglas del chunker `headings`:
+
+- Cada fragmento lleva en sus metadatos la **ruta de encabezados** (`Contrato > Pagos`) y el nivel, para poder citar la procedencia.
+- Por defecto el fragmento incluye su línea de encabezado, de modo que se puede buscar por el título de una sección.
+- Los encabezados dentro de bloques de código (``` o `~~~`) no cuentan, y un bloque de código no se parte por sus líneas en blanco.
+- Un párrafo mayor que el límite se parte por frases; una frase demasiado larga, por palabras; una palabra enorme, a corte duro. Los bloques de código largos se parten por líneas.
+- Una sección sin contenido (solo el encabezado) no genera fragmento, pero sí aparece en la ruta de sus hijos.
+- El resultado es determinista: el mismo texto da siempre los mismos fragmentos y posiciones.
+- Un archivo que no es UTF-8 falla de forma permanente con un mensaje claro: reintentar no lo arreglaría y adivinar la codificación daría texto corrupto.
+
+Limitaciones conocidas: solo encabezados ATX (`# Título`), no los subrayados; las tablas y listas se tratan como párrafos; el tamaño es aproximado cuando el encabezado es muy largo.
+
 ## 9. Cola de trabajos
 
 ### 9.1 Qué se encola y qué no
@@ -454,12 +478,13 @@ Cada caso de uso recibe un `Actor` ya identificado, **comprueba el permiso** con
 | `ListDocuments`       | `read` / `reader`     | síncrono   | `list[Document]`                   |
 | `GetDocumentHistory`  | `editor`              | síncrono   | `list[DocumentVersion]`            |
 | `GetJob` / `ListJobs` | `editor`              | síncrono   | `Job` / `list[Job]`                |
-| `CancelJob`           | `editor`              | síncrono   | confirmación                       |
+| `CancelJob`           | `editor`              | síncrono   | `Job` cancelado                    |
 | `RetryDeadJob`        | `owner`               | síncrono   | `Job`                              |
 | `IssueToken`          | `owner`               | síncrono   | token en claro (una sola vez)      |
 | `RevokeToken`         | `owner`               | síncrono   | —                                  |
 | `ManageMembers`       | `owner`               | síncrono   | —                                  |
 | `QueryOperations`     | `owner`               | síncrono   | `list[OperationEntry]`             |
+| `VerifyOperationLog`  | `owner`               | síncrono   | `ChainReport`                      |
 | `ViewTrace`           | `editor`              | síncrono   | traza por `correlation_id`         |
 
 ### Manejadores del worker
@@ -479,7 +504,10 @@ Los manejadores reciben sus puertos por constructor (inyección de dependencias)
 - Una denegación de permiso deja una entrada `denied` en el registro de la colección afectada; un error de validación deja una entrada `failed`.
 - `HandleIngest` atiende los trabajos `ingest` y `modify`. Los fragmentos tienen identificador determinista (`<doc>:<versión>:<posición>`) y, antes de indexar, se limpia lo que hubiera dejado un intento interrumpido.
 - `ProcessNextJob` es lo que hace un worker en cada vuelta: toma un trabajo, lo despacha, y decide entre `ack`, reintento con espera creciente o `dead`. Actúa con la identidad y el `correlation_id` de quien encoló el trabajo. El adaptador `worker` solo lo llama en bucle.
-- Los errores permanentes (`PermanentJobError`) pasan a `dead` sin reintentos.
+- Los errores permanentes (`PermanentJobError`) pasan a `dead` sin reintentos. Un documento sin texto indexable es uno de ellos.
+- `CancelJob` solo cancela un trabajo en cola (si no, `Conflict`). Una ingesta nueva cancelada deja el documento en `failed`, porque nunca se indexó; una modificación cancelada deja el documento sirviendo su versión vigente.
+- "Sin cambios" se decide frente a la versión **vigente** (la indexada), no frente a la última subida: si esa se canceló o falló, volver a subir el mismo contenido sí crea trabajo.
+- `QueryOperations` anota su propia consulta **después** de leer el registro, para que no aparezca en su resultado. El registro se devuelve de antiguo a reciente.
 
 ## 12. Servidor MCP (`adapters/mcp-server`)
 
@@ -787,6 +815,15 @@ A los usuarios y pequeñas empresas se les pide, sin obligación y sin que condi
 
 ## 21. Registro de cambios
 
+### v0.4.3
+- Casos de uso nuevos: `GetJob`, `ListJobs`, `CancelJob`, `QueryOperations` y `VerifyOperationLog` (este último cubre el endpoint `operations/verify`, que no tenía caso de uso). Total: 22 casos de uso, 14 implementados.
+- Las pruebas obligatorias 1, 4 y 6 pasan a cubrir trabajos y registro de operaciones.
+- Corregido: `SubmitDocument` comparaba el contenido con la última versión subida y no con la vigente; tras cancelar o fallar un trabajo, volver a subir lo mismo no hacía nada.
+- Un documento sin texto indexable falla de forma permanente (`dead`).
+- `ingest`: `PlainTextExtractor`, `MarkdownExtractor` y `HeadingChunker`, registrados por entry point. `glosa_app check` los descubre.
+- `World` pasa a `glosa_core.testing_world`, reutilizable por otros paquetes.
+- ADRs 0025 y 0026.
+
 ### v0.4.2
 - Puertos nuevos: `CollectionRepository`, `IdGenerator`; `AccessRepository` ampliado (miembros y consulta de tokens); `JobQueue.find_by_key`; `DocumentRepository.update_status`. Los métodos de `DocumentRepository` reciben siempre `collection_id`.
 - `Collection.settings` pasa a ser `CollectionSettings`; `Job` gana el campo `version`.
@@ -859,6 +896,8 @@ A los usuarios y pequeñas empresas se les pide, sin obligación y sin que condi
 | 0022 | Los casos de uso reciben un `RequestContext` y registran su propio resultado | Una sola forma de autorizar y de dejar rastro, igual para API, MCP y worker |
 | 0023 | Fragmentos con identificador determinista y limpieza previa al indexar | Reintentos y caídas del worker no dejan fragmentos duplicados ni huérfanos |
 | 0024 | Pruebas de contrato para los adaptadores de la cola                | Cualquier cola (memoria, SQLite, Postgres) debe cumplir las mismas garantías |
+| 0025 | Chunker por encabezados con la ruta de encabezados en cada fragmento | Poder citar la procedencia y buscar por el título de una sección |
+| 0026 | Los adaptadores se descubren por entry points del grupo `glosa.adapters` | Añadir adaptadores sin tocar la composición ni bifurcar el núcleo |
 
 ## 23. Glosario
 
@@ -892,3 +931,6 @@ A los usuarios y pequeñas empresas se les pide, sin obligación y sin que condi
 - **Licencia comercial:** contrato de pago para quien no cumple los límites de la licencia pública.
 - **CLA:** acuerdo por el que quien contribuye concede al titular los derechos necesarios para relicenciar su código.
 - **Glosa:** nombre del proyecto. Anotación que explica un texto, como la capa didáctica explica cómo funciona el sistema.
+- **Front matter:** bloque de metadatos YAML al principio de un documento Markdown, entre líneas `---`. No es contenido y se retira al extraer el texto.
+- **Ruta de encabezados:** cadena de títulos que contienen a un fragmento (`Contrato > Pagos`); permite citar de dónde viene.
+- **Entry point:** mecanismo de Python por el que un paquete instalado anuncia sus adaptadores sin que nadie los importe a mano.

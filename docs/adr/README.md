@@ -28,3 +28,5 @@ Cada decisión relevante se documenta en un fichero numerado. Estados: *Propuest
 | [0022](0022-los-casos-de-uso-reciben-un-requestcontext-y-regis.md) | Los casos de uso reciben un `RequestContext` y registran su propio resultado | Propuesta |
 | [0023](0023-fragmentos-con-identificador-determinista-y-limpie.md) | Fragmentos con identificador determinista y limpieza previa al indexar | Propuesta |
 | [0024](0024-pruebas-de-contrato-para-los-adaptadores-de-la-col.md) | Pruebas de contrato para los adaptadores de la cola | Propuesta |
+| [0025](0025-chunker-por-encabezados-con-la-ruta-de-encabezados.md) | Chunker por encabezados con la ruta de encabezados en cada fragmento | Propuesta |
+| [0026](0026-los-adaptadores-se-descubren-por-entry-points-del.md) | Los adaptadores se descubren por entry points del grupo `glosa.adapters` | Propuesta |

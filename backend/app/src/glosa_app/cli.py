@@ -45,8 +45,10 @@ def check(env: Mapping[str, str], strict: bool, out=None, err=None) -> int:
     print(f"Retención:  {template.get('policy.retention_days') or 'sin límite'} días", file=out)
     print(f"Demo:       datos={template.get('demo.seed_data')} token={template.get('demo.demo_token')}", file=out)
 
-    # Los adaptadores reales aún no existen: hoy el registro está vacío.
-    missing = Registry().missing(template)
+    # Los adaptadores se descubren por entry points (grupo `glosa.adapters`)
+    registry = Registry()
+    registry.load_entry_points()
+    missing = registry.missing(template)
     if missing:
         print(f"Adaptadores pendientes de implementar: {len(missing)}", file=out)
         if strict:
