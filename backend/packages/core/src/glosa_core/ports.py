@@ -1,6 +1,7 @@
 """Puertos (interfaces) que el dominio exige al exterior (SPEC §8)."""
 from __future__ import annotations
 
+from contextlib import AbstractContextManager
 from datetime import datetime
 from typing import Protocol
 
@@ -122,3 +123,13 @@ class Clock(Protocol):
 
 class IdGenerator(Protocol):
     def new_id(self, prefix: str) -> str: ...
+
+
+class UnitOfWork(Protocol):
+    """Agrupa varias escrituras en una sola transacción (SPEC §9.4: atomicidad).
+
+    Todo lo que ocurra dentro de `with uow.transaction():` se confirma junto o no se
+    confirma. Las transacciones anidadas se unen a la exterior.
+    """
+
+    def transaction(self) -> AbstractContextManager[None]: ...

@@ -30,3 +30,7 @@ Cada decisión relevante se documenta en un fichero numerado. Estados: *Propuest
 | [0024](0024-pruebas-de-contrato-para-los-adaptadores-de-la-col.md) | Pruebas de contrato para los adaptadores de la cola | Propuesta |
 | [0025](0025-chunker-por-encabezados-con-la-ruta-de-encabezados.md) | Chunker por encabezados con la ruta de encabezados en cada fragmento | Propuesta |
 | [0026](0026-los-adaptadores-se-descubren-por-entry-points-del.md) | Los adaptadores se descubren por entry points del grupo `glosa.adapters` | Propuesta |
+| [0027](0027-el-contenido-de-los-archivos-vive-dentro-de-sqlite.md) | El contenido de los archivos vive dentro de SQLite | Propuesta |
+| [0028](0028-puerto-unitofwork-las-escrituras-relacionadas-se-c.md) | Puerto `UnitOfWork`: las escrituras relacionadas se confirman juntas | Propuesta |
+| [0029](0029-consulta-de-texto-palabras-entre-comillas-unidas-c.md) | Consulta de texto: palabras entre comillas unidas con OR, orden por bm25 | Propuesta |
+| [0030](0030-los-tests-de-core-se-ejecutan-tambien-contra-los-a.md) | Los tests de `core` se ejecutan también contra los adaptadores reales | Propuesta |

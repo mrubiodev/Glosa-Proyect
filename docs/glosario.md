@@ -33,3 +33,7 @@
 - **Front matter:** bloque de metadatos YAML al principio de un documento Markdown, entre líneas `---`. No es contenido y se retira al extraer el texto.
 - **Ruta de encabezados:** cadena de títulos que contienen a un fragmento (`Contrato > Pagos`); permite citar de dónde viene.
 - **Entry point:** mecanismo de Python por el que un paquete instalado anuncia sus adaptadores sin que nadie los importe a mano.
+- **Unidad de trabajo (`UnitOfWork`):** agrupa varias escrituras en una transacción: se confirman juntas o no se confirma ninguna.
+- **WAL:** modo de SQLite en el que las lecturas no bloquean a la escritura.
+- **bm25:** función de relevancia de FTS5 que ordena los resultados por lo bien que encajan con la consulta.
+- **Migración:** cambio numerado del esquema de la base de datos; las ya aplicadas nunca se modifican.

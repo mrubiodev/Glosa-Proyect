@@ -12,13 +12,14 @@ El proyecto está en fase de diseño con un núcleo ya implementado.
 
 | Pieza | Estado |
 |-------|--------|
-| Especificación (v0.4.3), ADRs, contrato OpenAPI | Hecho |
+| Especificación (v0.4.4), ADRs, contrato OpenAPI | Hecho |
 | Núcleo: entidades, puertos, permisos, tokens, registro encadenado | Implementado, con tests |
 | Plantillas de cliente (carga, herencia, guardia de producción) | Implementado, con tests |
 | Dockerfile y docker-compose | Hechos |
-| Casos de uso (14 de 22) y las 14 pruebas obligatorias | Implementado, con tests |
+| Casos de uso (14 de 25) y las 14 pruebas obligatorias | Implementado, con tests |
+| Almacenamiento SQLite (documentos, búsqueda FTS5, cola, registro, transacciones) | Implementado, con tests |
 | Extractores de texto y Markdown, chunker por encabezados | Implementado, con tests |
-| Almacenamiento SQLite, búsqueda, API, servidor MCP, proceso del worker | Pendiente |
+| Proceso del worker, API, servidor MCP | Pendiente |
 | Frontend | Pendiente |
 
 ## Inicio rápido
@@ -29,7 +30,7 @@ El proyecto está en fase de diseño con un núcleo ya implementado.
 cd backend
 python -m venv .venv && source .venv/bin/activate
 make install
-make test        # 149 tests
+make test        # 228 tests en memoria + los 81 de core contra SQLite
 make check       # valida la plantilla activa
 ```
 
@@ -95,4 +96,4 @@ Si lo usas y puedes, ayuda a que siga adelante. Es voluntario y no condiciona la
 
 ## Siguiente paso
 
-Almacenamiento en SQLite (documentos, índice FTS5, cola, registro y accesos), validado con las pruebas de contrato, y después el worker y la API. Todo lo pendiente, al día, está en [`docs/PENDIENTE.md`](docs/PENDIENTE.md).
+Componer todo en `app` (crear la base, construir los casos de uso con los adaptadores que pida la plantilla) y levantar el worker, que cierra el recorrido subir → indexar → buscar sin HTTP. Después, la API y el servidor MCP. Todo lo pendiente, al día, está en [`docs/PENDIENTE.md`](docs/PENDIENTE.md).

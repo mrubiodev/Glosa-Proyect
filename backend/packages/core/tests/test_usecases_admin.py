@@ -183,10 +183,9 @@ def test_verificar_el_registro_detecta_manipulaciones(world):
     ctx = world.ctx(ana)
     assert world.verify_ops.execute(ctx, col.id).valid
 
-    entries = world.log._by_collection[col.id]
-    entries[1] = dataclasses.replace(entries[1], outcome=Outcome.DENIED)
+    tampered_id = world.tamper_log(col.id, 1, outcome=Outcome.DENIED)
     report = world.verify_ops.execute(ctx, col.id)
-    assert not report.valid and report.broken_at == entries[1].id
+    assert not report.valid and report.broken_at == tampered_id
 
 
 # === Ampliación de las pruebas obligatorias ===================================

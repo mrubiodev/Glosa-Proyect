@@ -50,15 +50,16 @@ class CreateCollection(UseCase):
             created_at=self.k.clock.now(),
             settings=self._defaults,
         )
-        self._collections.add(collection)
-        self._access.add_member(ctx.actor.id, collection.id, Role.OWNER)
-        self.k.recorder.record(
-            ctx,
-            self.action,
-            Outcome.SUCCEEDED,
-            collection_id=collection.id,
-            target={"collection_id": collection.id},
-            details={"name": clean},
-            started=started,
-        )
+        with self.k.uow.transaction():
+            self._collections.add(collection)
+            self._access.add_member(ctx.actor.id, collection.id, Role.OWNER)
+            self.k.recorder.record(
+                ctx,
+                self.action,
+                Outcome.SUCCEEDED,
+                collection_id=collection.id,
+                target={"collection_id": collection.id},
+                details={"name": clean},
+                started=started,
+            )
         return collection

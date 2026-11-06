@@ -4,7 +4,7 @@ from glosa_core.domain import AccessToken, ActorKind, Credentials, Scope
 from glosa_core.testing import FixedClock
 from glosa_core.tokens import TOKEN_PREFIX, TokenAuthenticator, generate_token, hash_token
 
-from conftest import COL_A
+from glosa_core.testing import COL_A
 
 
 def make_token(access, raw, **overrides):

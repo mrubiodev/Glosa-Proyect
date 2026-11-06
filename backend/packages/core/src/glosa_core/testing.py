@@ -29,6 +29,11 @@ from .domain import (
 )
 
 
+# Identificadores de colección de uso común en los tests
+COL_A = "col-a"
+COL_B = "col-b"
+
+
 class FixedClock:
     def __init__(self, now: datetime | None = None) -> None:
         self._now = now or datetime(2026, 1, 1, tzinfo=timezone.utc)
@@ -132,6 +137,11 @@ class InMemoryDocumentRepository:
 
     def get(self, collection_id: str, doc_id: str) -> Document | None:
         return self._docs.get((collection_id, doc_id))
+
+    def force_source_type(self, collection_id: str, doc_id: str, source_type: str) -> None:
+        """Solo para tests: simula un documento cuyo tipo ya no tiene extractor."""
+        doc = self._docs[(collection_id, doc_id)]
+        self._docs[(collection_id, doc_id)] = replace(doc, source_type=source_type)
 
     def get_content(self, collection_id: str, doc_id: str, version: int | None) -> bytes | None:
         doc = self.get(collection_id, doc_id)
@@ -330,6 +340,12 @@ class InMemoryOperationLog:
 
     def entries(self, collection_id: str | None) -> list[OperationEntry]:
         return list(self._by_collection.get(collection_id, []))
+
+    def tamper(self, collection_id: str, index: int, **changes) -> str:
+        """Solo para tests: altera una entrada ya guardada. Devuelve su id."""
+        entries = self._by_collection[collection_id]
+        entries[index] = replace(entries[index], **changes)
+        return entries[index].id
 
     def query(
         self, collection_id: str, filters: OperationFilter, limit: int

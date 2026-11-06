@@ -78,26 +78,27 @@ class CancelJob(UseCase):
         target = {"job_id": job_id}
         self._require(ctx, collection_id, Permission.CANCEL_JOB, self.action, target)
         with self._guard(ctx, self.action, collection_id, started, target):
-            job = self._queue.get(collection_id, job_id)
-            if job is None:
-                raise NotFound("Trabajo no encontrado")
-            if job.status is not JobStatus.QUEUED:
-                raise Conflict(
-                    f"Solo se puede cancelar un trabajo en cola (estado actual: {job.status.value})"
-                )
-            if not self._queue.cancel(collection_id, job_id):
-                raise Conflict("El trabajo ya no está en cola")
+            with self.k.uow.transaction():
+                job = self._queue.get(collection_id, job_id)
+                if job is None:
+                    raise NotFound("Trabajo no encontrado")
+                if job.status is not JobStatus.QUEUED:
+                    raise Conflict(
+                        f"Solo se puede cancelar un trabajo en cola (estado actual: {job.status.value})"
+                    )
+                if not self._queue.cancel(collection_id, job_id):
+                    raise Conflict("El trabajo ya no está en cola")
 
-        # Un documento nuevo cuya ingesta se cancela no llegó a indexarse nunca: queda `failed`.
-        # En una modificación el documento sigue sirviendo su versión vigente.
-        document_status = None
-        if job.type is JobType.INGEST:
-            self._documents.update_status(collection_id, job.target, DocumentStatus.FAILED)
-            document_status = DocumentStatus.FAILED.value
-        self.k.recorder.record(
-            ctx, self.action, Outcome.SUCCEEDED, collection_id=collection_id,
-            target={"job_id": job_id, "document_id": job.target, "version": job.version},
-            details={"type": job.type.value, "document_status": document_status},
-            started=started,
-        )
+                # Un documento nuevo cuya ingesta se cancela no llegó a indexarse nunca: queda
+                # `failed`. En una modificación el documento sigue sirviendo su versión vigente.
+                document_status = None
+                if job.type is JobType.INGEST:
+                    self._documents.update_status(collection_id, job.target, DocumentStatus.FAILED)
+                    document_status = DocumentStatus.FAILED.value
+                self.k.recorder.record(
+                    ctx, self.action, Outcome.SUCCEEDED, collection_id=collection_id,
+                    target={"job_id": job_id, "document_id": job.target, "version": job.version},
+                    details={"type": job.type.value, "document_status": document_status},
+                    started=started,
+                )
         return self._queue.get(collection_id, job_id)

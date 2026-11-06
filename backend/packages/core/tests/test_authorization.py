@@ -4,7 +4,7 @@ from glosa_core.authorization import Permission as P
 from glosa_core.domain import Actor, ActorKind, Scope
 from glosa_core.errors import PermissionDenied
 
-from conftest import COL_A, COL_B
+from glosa_core.testing import COL_A, COL_B
 
 
 def user(uid: str) -> Actor:

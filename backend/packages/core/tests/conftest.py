@@ -2,10 +2,8 @@ import pytest
 
 from glosa_core.authorization import AuthorizationService
 from glosa_core.domain import Role
-from glosa_core.testing import FixedClock, InMemoryAccessRepository
+from glosa_core.testing import COL_A, COL_B, FixedClock, InMemoryAccessRepository
 
-COL_A = "col-a"
-COL_B = "col-b"
 
 
 @pytest.fixture

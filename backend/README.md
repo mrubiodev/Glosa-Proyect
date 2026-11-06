@@ -20,7 +20,7 @@ Dockerfile · docker-compose.yml · Makefile
 ```bash
 python -m venv .venv && source .venv/bin/activate
 make install
-make test        # 149 tests
+make test        # 228 tests en memoria + los 81 de core contra SQLite
 make check       # valida la plantilla activa
 ```
 
@@ -63,10 +63,11 @@ La lista completa y al día de lo que falta está en [`../docs/PENDIENTE.md`](..
 | Pieza | Estado |
 |-------|--------|
 | `core`: entidades, puertos, autorización, tokens, encadenado de hashes | Implementado, con tests |
-| `core`: casos de uso | 14 de 22 implementados, con las 14 pruebas obligatorias |
+| `core`: casos de uso | 14 de 25 implementados, con las 14 pruebas obligatorias |
 | `templates`: carga con herencia, esquema, guardia de producción, registro de adaptadores | Implementado, con tests |
 | `app`: orden `check` | Implementado, con tests |
 | `ingest`: extractores de texto y Markdown, chunker por encabezados | Implementado, con tests |
-| `retrieval`, `storage`, `explain` | Esqueleto |
+| `storage`: SQLite (documentos, FTS5, cola, registro, colecciones, accesos, transacciones) | Implementado, con tests |
+| `retrieval`, `explain` | Esqueleto |
 | `http-api`, `mcp-server`, `worker` | Esqueleto (su punto de entrada avisa de que está pendiente) |
 | `Dockerfile`, `docker-compose.yml` | Hechos; `check` y `tests` operativos |

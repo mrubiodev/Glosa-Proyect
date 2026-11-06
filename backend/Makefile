@@ -1,13 +1,20 @@
 PACKAGES = -e packages/core -e packages/ingest -e packages/retrieval -e packages/storage -e packages/explain -e packages/templates \
            -e adapters/http-api -e adapters/mcp-server -e adapters/worker -e app
 
-.PHONY: install test check docker-build docker-check docker-test
+.PHONY: install test test-memory test-sqlite check docker-build docker-check docker-test
 
 install:
 	pip install $(PACKAGES) pytest
 
-test:
-	pytest packages/core/tests packages/ingest/tests packages/templates/tests app/tests tests
+test: test-memory test-sqlite
+
+# Toda la batería con los dobles en memoria
+test-memory:
+	pytest packages/core/tests packages/ingest/tests packages/storage/tests packages/templates/tests app/tests tests
+
+# Las mismas pruebas de core (incluidas las 14 obligatorias) contra los adaptadores SQLite reales
+test-sqlite:
+	GLOSA_TEST_ADAPTERS=glosa_storage.testing:make_adapters pytest packages/core/tests
 
 check:
 	python -m glosa_app check

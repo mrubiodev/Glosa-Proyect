@@ -5,6 +5,9 @@ dentro del flujo real, sustituyendo extractores, chunker o repositorios.
 """
 from __future__ import annotations
 
+import importlib
+import os
+
 from .authorization import AuthorizationService
 from .context import RequestContext
 from .domain import (
@@ -32,6 +35,7 @@ from .testing import (
     SequentialIds,
 )
 from .tokens import TokenAuthenticator
+from .uow import NoTransaction
 from .usecases import (
     CancelJob,
     CreateCollection,
@@ -50,27 +54,52 @@ from .usecases import (
 )
 
 
+def adapters_from_env(clock) -> dict:
+    """Permite ejecutar toda la batería de tests contra adaptadores reales.
+
+    `GLOSA_TEST_ADAPTERS=paquete.modulo:funcion` apunta a una función que recibe el reloj y
+    devuelve un diccionario con los adaptadores (access, collections, documents, index,
+    queue, log, uow). `core` no conoce ningún adaptador concreto: solo importa lo que se
+    le indique.
+    """
+    spec = os.environ.get("GLOSA_TEST_ADAPTERS")
+    if not spec:
+        return {}
+    module_name, _, function = spec.partition(":")
+    return getattr(importlib.import_module(module_name), function)(clock)
+
+
 class World:
     def __init__(
         self,
         settings: CollectionSettings | None = None,
         extractors=None,
         chunker=None,
+        adapters: dict | None = None,
+        clock: FixedClock | None = None,
+        ids=None,
     ) -> None:
-        self.clock = FixedClock()
-        self.ids = SequentialIds()
-        self.access = InMemoryAccessRepository()
-        self.collections = InMemoryCollectionRepository()
-        self.documents = InMemoryDocumentRepository()
-        self.index = InMemoryChunkIndex()
-        self.queue = InMemoryJobQueue(self.clock)
-        self.log = InMemoryOperationLog()
+        self.clock = clock or FixedClock()
+        self.ids = ids or SequentialIds()
+        given = adapters if adapters is not None else adapters_from_env(self.clock)
+
+        def pick(name, default):
+            return given[name] if name in given else default()
+
+        self.access = pick("access", InMemoryAccessRepository)
+        self.collections = pick("collections", InMemoryCollectionRepository)
+        self.documents = pick("documents", InMemoryDocumentRepository)
+        self.index = pick("index", InMemoryChunkIndex)
+        self.queue = pick("queue", lambda: InMemoryJobQueue(self.clock))
+        self.log = pick("log", InMemoryOperationLog)
+        self.uow = pick("uow", NoTransaction)
 
         self.kernel = Kernel(
             authz=AuthorizationService(self.access),
             recorder=OperationRecorder(self.log, self.clock, self.ids),
             clock=self.clock,
             ids=self.ids,
+            uow=self.uow,
         )
         extractors = extractors if extractors is not None else [FakeExtractor()]
         chunker = chunker if chunker is not None else FakeChunker()
@@ -138,6 +167,13 @@ class World:
             content=text.encode("utf-8"),
             **kw,
         )
+
+    def tamper_log(self, collection_id: str, index: int, **changes) -> str:
+        """Altera una entrada del registro (para probar la detección). Devuelve su id."""
+        return self.log.tamper(collection_id, index, **changes)
+
+    def force_source_type(self, collection_id: str, doc_id: str, source_type: str) -> None:
+        self.documents.force_source_type(collection_id, doc_id, source_type)
 
     def run_jobs(self) -> int:
         done = 0

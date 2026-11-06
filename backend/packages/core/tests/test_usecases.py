@@ -207,12 +207,11 @@ def test_un_documento_con_tipo_sin_extractor_acaba_en_dead(world):
     col = world.new_collection("ana")
     res = world.upload(ana, col.id, "texto")
     # Se cambia el tipo a algo que ningún extractor admite, simulando una configuración rota
-    doc = world.documents.get(col.id, res.document_id)
-    world.documents._docs[(col.id, doc.id)] = dataclasses.replace(doc, source_type="pdf")
+    world.force_source_type(col.id, res.document_id, "pdf")
     world.run_jobs()
     job = world.queue.get(col.id, res.job.id)
     assert job.status is JobStatus.DEAD and "Sin extractor" in job.error
-    assert world.documents.get(col.id, doc.id).status is DocumentStatus.FAILED
+    assert world.documents.get(col.id, res.document_id).status is DocumentStatus.FAILED
 
 
 # === Pruebas obligatorias (SPEC §14) ========================================
@@ -375,10 +374,9 @@ def test_13_el_registro_detecta_manipulaciones(world):  # prueba obligatoria 13
     world.search.execute(world.ctx(ana), col.id, "algo")
     assert world.log.verify_chain(col.id).valid
 
-    entries = world.log._by_collection[col.id]  # acceso directo para manipularlo
-    entries[3] = dataclasses.replace(entries[3], outcome=Outcome.DENIED)
+    tampered_id = world.tamper_log(col.id, 3, outcome=Outcome.DENIED)
     report = world.log.verify_chain(col.id)
-    assert not report.valid and report.broken_at == entries[3].id
+    assert not report.valid and report.broken_at == tampered_id
 
 
 def test_14_con_hash_only_el_texto_de_la_consulta_no_llega_al_registro():  # prueba obligatoria 14

@@ -73,49 +73,56 @@ class HandleIngest:
                 )
                 for d in drafts
             ]
-            # Limpia lo que dejara un intento anterior que se interrumpió
-            self._index.remove_version(job.collection_id, doc.id, version)
-            self._index.index(chunks)
-            self._step(ctx, "document.index", job, target, {"chunks": len(chunks)})
+            # Indexar, retirar versiones anteriores, marcar `ready` y registrar el resultado se
+            # confirman juntos: si algo falla a medias, no queda nada a medias.
+            with self.k.uow.transaction():
+                # Limpia lo que dejara un intento anterior que se interrumpió
+                self._index.remove_version(job.collection_id, doc.id, version)
+                self._index.index(chunks)
+                self._step(ctx, "document.index", job, target, {"chunks": len(chunks)})
 
-            # Solo la versión vigente queda indexada
-            retired = []
-            for old in self._documents.history(job.collection_id, doc.id):
-                if old.version != version:
-                    self._index.remove_version(job.collection_id, doc.id, old.version)
-                    retired.append(old.version)
+                # Solo la versión vigente queda indexada
+                retired = []
+                for old in self._documents.history(job.collection_id, doc.id):
+                    if old.version != version:
+                        self._index.remove_version(job.collection_id, doc.id, old.version)
+                        retired.append(old.version)
 
-            self._documents.update_status(
-                job.collection_id, doc.id, DocumentStatus.READY, current_version=version
-            )
+                self._documents.update_status(
+                    job.collection_id, doc.id, DocumentStatus.READY, current_version=version
+                )
+                self.k.recorder.record(
+                    ctx,
+                    "document.ingest",
+                    Outcome.SUCCEEDED,
+                    collection_id=job.collection_id,
+                    target=target,
+                    details={"chunks": len(chunks), "retired_versions": retired},
+                    started=started,
+                )
         except Exception as exc:
             # Si ya había una versión vigente sigue sirviéndose; si no, el documento falla
-            if previously_current:
-                self._documents.update_status(
-                    job.collection_id, doc.id, DocumentStatus.READY, current_version=previously_current
+            with self.k.uow.transaction():
+                if previously_current:
+                    self._documents.update_status(
+                        job.collection_id,
+                        doc.id,
+                        DocumentStatus.READY,
+                        current_version=previously_current,
+                    )
+                else:
+                    self._documents.update_status(job.collection_id, doc.id, DocumentStatus.FAILED)
+                self.k.recorder.record(
+                    ctx,
+                    "document.ingest",
+                    Outcome.FAILED,
+                    collection_id=job.collection_id,
+                    target=target,
+                    details={"error": str(exc), "kind": type(exc).__name__},
+                    started=started,
                 )
-            else:
-                self._documents.update_status(job.collection_id, doc.id, DocumentStatus.FAILED)
-            self.k.recorder.record(
-                ctx,
-                "document.ingest",
-                Outcome.FAILED,
-                collection_id=job.collection_id,
-                target=target,
-                details={"error": str(exc), "kind": type(exc).__name__},
-                started=started,
-            )
             raise
 
-        self.k.recorder.record(
-            ctx,
-            "document.ingest",
-            Outcome.SUCCEEDED,
-            collection_id=job.collection_id,
-            target=target,
-            details={"chunks": len(chunks), "retired_versions": retired},
-            started=started,
-        )
         return JobResult({"chunks": len(chunks), "version": version})
 
     def _step(self, ctx, action, job, target, details) -> None:

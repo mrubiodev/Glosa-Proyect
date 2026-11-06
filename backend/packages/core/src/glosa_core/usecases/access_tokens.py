@@ -68,19 +68,20 @@ class IssueToken(UseCase):
             scopes=wanted,
             expires_at=expires,
         )
-        self._access.save_token(token)
-        self.k.recorder.record(
-            ctx,
-            self.action,
-            Outcome.SUCCEEDED,
-            collection_id=collection_id,
-            target={"token_id": token.id},
-            details={
-                "scopes": sorted(s.value for s in wanted),
-                "expires_at": expires.isoformat() if expires else None,
-            },
-            started=started,
-        )
+        with self.k.uow.transaction():
+            self._access.save_token(token)
+            self.k.recorder.record(
+                ctx,
+                self.action,
+                Outcome.SUCCEEDED,
+                collection_id=collection_id,
+                target={"token_id": token.id},
+                details={
+                    "scopes": sorted(s.value for s in wanted),
+                    "expires_at": expires.isoformat() if expires else None,
+                },
+                started=started,
+            )
         return IssuedToken(token, raw)
 
 
@@ -99,12 +100,13 @@ class RevokeToken(UseCase):
             # get_token exige la colección: no se pueden revocar tokens de otra
             if self._access.get_token(collection_id, token_id) is None:
                 raise NotFound("Token no encontrado")
-        self._access.revoke_token(token_id)
-        self.k.recorder.record(
-            ctx,
-            self.action,
-            Outcome.SUCCEEDED,
-            collection_id=collection_id,
-            target=target,
-            started=started,
-        )
+        with self.k.uow.transaction():
+            self._access.revoke_token(token_id)
+            self.k.recorder.record(
+                ctx,
+                self.action,
+                Outcome.SUCCEEDED,
+                collection_id=collection_id,
+                target=target,
+                started=started,
+            )

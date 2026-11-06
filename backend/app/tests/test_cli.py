@@ -43,13 +43,13 @@ def test_strict_falla_mientras_falten_adaptadores(capsys):
     assert "no está registrado" in capsys.readouterr().err
 
 
-def test_los_adaptadores_de_ingest_se_descubren_solos(capsys):
-    """Extractores y chunker ya están registrados por entry point; quedan los demás."""
+def test_los_adaptadores_instalados_se_descubren_solos(capsys):
+    """Ingest y storage se registran por entry point; solo quedan dos pendientes."""
     assert main(["check", "--strict"], env={}) == 1
     err = capsys.readouterr().err
-    for implemented in ("markdown", "text", "headings"):
+    for implemented in ("markdown", "text", "headings", "sqlite", "sqlite-fts5"):
         assert f"'{implemented}'" not in err
-    for pending in ("sqlite", "sqlite-fts5", "none", "token"):
+    for pending in ("none", "token"):
         assert f"'{pending}'" in err
 
 

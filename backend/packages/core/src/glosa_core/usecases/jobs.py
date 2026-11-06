@@ -55,20 +55,23 @@ class ProcessNextJob:
         except Exception as exc:
             error = f"{type(exc).__name__}: {exc}"
             permanent = isinstance(exc, PermanentJobError) or job.attempts >= job.max_attempts
-            if permanent:
-                self._queue.fail(job.id, error, None)
-                record(ctx, "job.dead", Outcome.FAILED, collection_id=job.collection_id,
-                       target=target, details={"error": error, "attempts": job.attempts})
-            else:
-                retry_at = self.k.clock.now() + timedelta(
-                    seconds=self._backoff * 2 ** (job.attempts - 1)
-                )
-                self._queue.fail(job.id, error, retry_at)
-                record(ctx, "job.retry", Outcome.FAILED, collection_id=job.collection_id,
-                       target=target,
-                       details={"error": error, "attempts": job.attempts, "retry_at": retry_at.isoformat()})
+            with self.k.uow.transaction():  # el cambio de estado y su registro, juntos
+                if permanent:
+                    self._queue.fail(job.id, error, None)
+                    record(ctx, "job.dead", Outcome.FAILED, collection_id=job.collection_id,
+                           target=target, details={"error": error, "attempts": job.attempts})
+                else:
+                    retry_at = self.k.clock.now() + timedelta(
+                        seconds=self._backoff * 2 ** (job.attempts - 1)
+                    )
+                    self._queue.fail(job.id, error, retry_at)
+                    record(ctx, "job.retry", Outcome.FAILED, collection_id=job.collection_id,
+                           target=target,
+                           details={"error": error, "attempts": job.attempts,
+                                    "retry_at": retry_at.isoformat()})
         else:
-            self._queue.ack(job.id, result)
-            record(ctx, "job.succeed", Outcome.SUCCEEDED, collection_id=job.collection_id,
-                   target=target, details=result.summary)
+            with self.k.uow.transaction():
+                self._queue.ack(job.id, result)
+                record(ctx, "job.succeed", Outcome.SUCCEEDED, collection_id=job.collection_id,
+                       target=target, details=result.summary)
         return self._queue.get(job.collection_id, job.id)

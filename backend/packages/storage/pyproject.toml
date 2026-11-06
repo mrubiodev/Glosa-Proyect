@@ -12,6 +12,9 @@ dependencies = ["glosa-core"]
 [project.optional-dependencies]
 dev = ["pytest>=8"]
 
+[project.entry-points."glosa.adapters"]
+storage = "glosa_storage:register"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/glosa_storage"]
 

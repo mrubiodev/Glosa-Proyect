@@ -1,4 +1,4 @@
-# Glosa — Especificación v0.4.3
+# Glosa — Especificación v0.4.4
 
 > Estado: borrador · Idioma: español · Formato: Markdown versionado
 >
@@ -9,6 +9,8 @@
 > **v0.4.2:** se completan los puertos que faltaban (identificadores, colecciones, miembros) y se implementan los primeros casos de uso en `core`, con las 14 pruebas obligatorias de §14. Ver el estado real en [`PENDIENTE.md`](PENDIENTE.md).
 >
 > **v0.4.3:** se completan las consultas de trabajos y del registro de operaciones (`GetJob`, `ListJobs`, `CancelJob`, `QueryOperations`, `VerifyOperationLog`) y se implementan los adaptadores de `ingest`: extractores de texto y Markdown y chunker por encabezados (§8).
+>
+> **v0.4.4:** se implementan los adaptadores de `storage` sobre SQLite (documentos, índice FTS5, cola, registro de operaciones, colecciones y accesos), con el puerto `UnitOfWork` para que las escrituras relacionadas se confirmen juntas (§8).
 
 ## 1. Objetivo
 
@@ -285,7 +287,14 @@ class IdGenerator(Protocol):          # identificadores y correlation_id
     def new_id(self, prefix: str) -> str: ...
 ```
 
-Todo método que toca datos de una colección recibe su `collection_id`. Está pendiente un puerto de transacciones (`UnitOfWork`), ver [`PENDIENTE.md`](PENDIENTE.md).
+```python
+class UnitOfWork(Protocol):           # varias escrituras, una sola transacción
+    def transaction(self) -> AbstractContextManager[None]: ...
+```
+
+Todo método que toca datos de una colección recibe su `collection_id`.
+
+`UnitOfWork` agrupa las escrituras que deben confirmarse juntas (SPEC §9.4): todo lo de dentro de `with uow.transaction():` se confirma junto o no se confirma, y las transacciones anidadas se unen a la exterior. Lo usan `CreateCollection`, `IssueToken`, `RevokeToken`, `SubmitDocument` (documento, versión, trabajo y registro), `CancelJob`, el indexado de `HandleIngest` y el cierre de cada trabajo en `ProcessNextJob`.
 
 ### Adaptadores iniciales
 
@@ -293,7 +302,7 @@ Todo método que toca datos de una colección recibe su `collection_id`. Está p
 |----------------------|--------------------------------------|--------------------------------------|
 | `TextExtractor`      | Markdown y texto plano               | PDF, DOCX, OCR                       |
 | `Chunker`            | Por encabezados y párrafos           | Por tokens, semántico                |
-| `DocumentRepository` | SQLite + sistema de archivos         | Postgres + almacenamiento de objetos |
+| `DocumentRepository` | SQLite (el contenido, en la misma base) | Postgres + almacenamiento de objetos |
 | `ChunkIndex`         | SQLite FTS5                          | pgvector, híbrido, reranker          |
 | `JobQueue`           | Tabla en SQLite                      | Postgres, Redis, broker de mensajes  |
 | `OperationLog`       | Tabla en SQLite (solo inserciones)   | Almacén de logs externo              |
@@ -303,6 +312,32 @@ Todo método que toca datos de una colección recibe su `collection_id`. Está p
 | `Embedder`           | — (no incluido)                      | Local o API externa                  |
 | `Clock`              | `SystemClock` (en `core`)            | —                                    |
 | `IdGenerator`        | `UuidIds` (en `core`)                | —                                    |
+| `UnitOfWork`         | `Database` de SQLite (en `storage`)  | Transacciones de Postgres            |
+
+### Adaptadores de `storage` (implementados)
+
+Una sola base de datos SQLite (`glosa.db`) para todo, en modo WAL, con una conexión por hilo. Se registran por nombre con el entry point `glosa.adapters`.
+
+| Nombre (plantilla) | Qué incluye                                                                                   |
+|--------------------|-----------------------------------------------------------------------------------------------|
+| `sqlite`           | Colecciones, accesos (miembros y tokens), documentos con el contenido de cada versión, registro de operaciones y `UnitOfWork` |
+| `sqlite` (cola)    | `JobQueue` (`queue: sqlite`)                                                                  |
+| `sqlite-fts5`      | `ChunkIndex` con búsqueda de texto completo (`index: sqlite-fts5`)                            |
+
+Decisiones de diseño:
+
+- **El contenido de los archivos vive en la base de datos** (columna binaria por versión). Subir un documento es atómico con el resto de la transacción y una sola copia de seguridad lo guarda todo. Cambiarlo a disco o a un almacén de objetos es cambiar un adaptador.
+- **Transacciones:** `BEGIN IMMEDIATE` toma el bloqueo de escritura desde el principio, así que dos procesos nunca se pisan. Si algo falla dentro, no queda nada a medias.
+- **Aislamiento por colección en la consulta:** todo `SELECT`, `UPDATE` y `DELETE` filtra por `collection_id` en el propio SQL, no en la aplicación.
+- **Índice de texto:** FTS5 con `unicode61 remove_diacritics 2`, de modo que "rescision" encuentra "rescisión". La consulta del usuario nunca se pasa tal cual: cada palabra va entre comillas (así `AND`, `OR`, `*` o `"` no se interpretan como sintaxis) y se unen con OR; el orden lo da `bm25`, con el signo invertido para que mayor sea mejor.
+- **Cola:** `claim` es atómico entre procesos; un trabajo no se entrega mientras haya otro anterior sin terminar sobre el mismo documento (aunque espere un reintento); un lease vencido devuelve el trabajo a la cola; un índice único `(colección, clave de idempotencia)` impide duplicados aunque dos peticiones lleguen a la vez. Solo se puede confirmar (`ack`) o fallar un trabajo que esté en marcha.
+- **Registro de operaciones:** leer el último hash y añadir la entrada ocurren en una transacción, así que la cadena no se rompe con escrituras concurrentes. El adaptador no ofrece ninguna operación para editar o borrar entradas. Cada colección tiene su cadena; las entradas sin colección tienen la suya.
+- **Migraciones numeradas** (`PRAGMA user_version`): para cambiar el esquema se añade una migración, nunca se modifica una anterior. Una base de una versión más nueva que el programa se rechaza.
+- **Borrar una colección** elimina todos sus datos, incluidos sus fragmentos del índice de texto y su registro de operaciones.
+
+Los mismos tests de `core` (incluidas las 14 pruebas obligatorias) se ejecutan contra estos adaptadores con `GLOSA_TEST_ADAPTERS=glosa_storage.testing:make_adapters`, y la cola pasa las pruebas de contrato de `queue_contract`.
+
+Limitaciones conocidas: SQLite admite un solo escritor a la vez; `verify_chain` carga el registro de la colección entera en memoria; `Database.close()` solo cierra la conexión del hilo que la llama.
 
 ### Adaptadores de `ingest` (implementados)
 
@@ -485,6 +520,9 @@ Cada caso de uso recibe un `Actor` ya identificado, **comprueba el permiso** con
 | `ManageMembers`       | `owner`               | síncrono   | —                                  |
 | `QueryOperations`     | `owner`               | síncrono   | `list[OperationEntry]`             |
 | `VerifyOperationLog`  | `owner`               | síncrono   | `ChainReport`                      |
+| `ListCollections`     | usuario autenticado   | síncrono   | `list[Collection]`                 |
+| `UpdateCollectionSettings` | `owner`          | síncrono   | `Collection`                       |
+| `DeleteCollection`    | `owner`               | síncrono   | —                                  |
 | `ViewTrace`           | `editor`              | síncrono   | traza por `correlation_id`         |
 
 ### Manejadores del worker
@@ -507,6 +545,7 @@ Los manejadores reciben sus puertos por constructor (inyección de dependencias)
 - Los errores permanentes (`PermanentJobError`) pasan a `dead` sin reintentos. Un documento sin texto indexable es uno de ellos.
 - `CancelJob` solo cancela un trabajo en cola (si no, `Conflict`). Una ingesta nueva cancelada deja el documento en `failed`, porque nunca se indexó; una modificación cancelada deja el documento sirviendo su versión vigente.
 - "Sin cambios" se decide frente a la versión **vigente** (la indexada), no frente a la última subida: si esa se canceló o falló, volver a subir el mismo contenido sí crea trabajo.
+- Las escrituras relacionadas se confirman juntas con `UnitOfWork` (§8). Si algo falla dentro, no queda nada a medias, y el error se registra aparte, fuera de la transacción deshecha.
 - `QueryOperations` anota su propia consulta **después** de leer el registro, para que no aparezca en su resultado. El registro se devuelve de antiguo a reciente.
 
 ## 12. Servidor MCP (`adapters/mcp-server`)
@@ -815,6 +854,16 @@ A los usuarios y pequeñas empresas se les pide, sin obligación y sin que condi
 
 ## 21. Registro de cambios
 
+### v0.4.4
+- `storage`: adaptadores SQLite de colecciones, accesos, documentos (con el contenido de cada versión en la base), índice FTS5, cola, registro de operaciones y `UnitOfWork`, con migraciones numeradas y borrado de colección en cascada.
+- Nuevo puerto `UnitOfWork`; las escrituras relacionadas de `CreateCollection`, `IssueToken`, `RevokeToken`, `SubmitDocument`, `CancelJob`, `HandleIngest` y `ProcessNextJob` se confirman juntas. Cierra la deuda de atomicidad de §9.4.
+- La idempotencia de `SubmitDocument` ya no depende de un `find` seguido de un `insert`: la garantiza un índice único en la base.
+- Los tests de `core` se pueden ejecutar contra cualquier conjunto de adaptadores (`GLOSA_TEST_ADAPTERS`); la batería completa, incluidas las 14 pruebas obligatorias, pasa también contra SQLite.
+- Tests propios de `storage`: transacciones, concurrencia entre hilos, FTS5, atomicidad con fallos inyectados, persistencia tras reabrir y borrado en cascada.
+- Corregido: los tests de `core` importaban constantes desde `conftest`, lo que fallaba al ejecutarlos junto a otros paquetes. Pasan a `glosa_core.testing`.
+- La spec incluye ahora `ListCollections`, `UpdateCollectionSettings` y `DeleteCollection`, que la API ya necesitaba (§13) y no tenían caso de uso. Total: 25 casos de uso, 14 implementados.
+- ADRs 0027 a 0030.
+
 ### v0.4.3
 - Casos de uso nuevos: `GetJob`, `ListJobs`, `CancelJob`, `QueryOperations` y `VerifyOperationLog` (este último cubre el endpoint `operations/verify`, que no tenía caso de uso). Total: 22 casos de uso, 14 implementados.
 - Las pruebas obligatorias 1, 4 y 6 pasan a cubrir trabajos y registro de operaciones.
@@ -898,6 +947,10 @@ A los usuarios y pequeñas empresas se les pide, sin obligación y sin que condi
 | 0024 | Pruebas de contrato para los adaptadores de la cola                | Cualquier cola (memoria, SQLite, Postgres) debe cumplir las mismas garantías |
 | 0025 | Chunker por encabezados con la ruta de encabezados en cada fragmento | Poder citar la procedencia y buscar por el título de una sección |
 | 0026 | Los adaptadores se descubren por entry points del grupo `glosa.adapters` | Añadir adaptadores sin tocar la composición ni bifurcar el núcleo |
+| 0027 | El contenido de los archivos vive dentro de SQLite                  | Atomicidad con la transacción y una sola copia de seguridad; cambiar a disco es cambiar un adaptador |
+| 0028 | Puerto `UnitOfWork`: las escrituras relacionadas se confirman juntas | Cumplir la atomicidad de §9.4 sin que el dominio conozca SQLite |
+| 0029 | Consulta de texto: palabras entre comillas unidas con OR, orden por bm25 | La entrada del usuario no se interpreta como sintaxis de FTS5 y gana recall |
+| 0030 | Los tests de `core` se ejecutan también contra los adaptadores reales | Una sola batería valida dobles y adaptadores; las pruebas obligatorias cubren ambos |
 
 ## 23. Glosario
 
@@ -934,3 +987,7 @@ A los usuarios y pequeñas empresas se les pide, sin obligación y sin que condi
 - **Front matter:** bloque de metadatos YAML al principio de un documento Markdown, entre líneas `---`. No es contenido y se retira al extraer el texto.
 - **Ruta de encabezados:** cadena de títulos que contienen a un fragmento (`Contrato > Pagos`); permite citar de dónde viene.
 - **Entry point:** mecanismo de Python por el que un paquete instalado anuncia sus adaptadores sin que nadie los importe a mano.
+- **Unidad de trabajo (`UnitOfWork`):** agrupa varias escrituras en una transacción: se confirman juntas o no se confirma ninguna.
+- **WAL:** modo de SQLite en el que las lecturas no bloquean a la escritura.
+- **bm25:** función de relevancia de FTS5 que ordena los resultados por lo bien que encajan con la consulta.
+- **Migración:** cambio numerado del esquema de la base de datos; las ya aplicadas nunca se modifican.

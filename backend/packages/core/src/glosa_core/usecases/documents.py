@@ -106,80 +106,85 @@ class SubmitDocument(UseCase):
             content_hash = hashlib.sha256(content).hexdigest()
             now = self.k.clock.now()
 
-            # 3a. Documento nuevo
-            if document_id is None:
-                if len(self._documents.list(collection_id)) >= settings.max_documents:
-                    raise CapacityExceeded("La colección alcanzó su máximo de documentos")
-                doc_id = self.k.ids.new_id("doc")
-                version = 1
-                job_type = JobType.INGEST
-                doc = Document(
-                    id=doc_id,
-                    collection_id=collection_id,
-                    title=title.strip(),
-                    source_type=source_type,
-                    current_version=0,
-                    status=DocumentStatus.PENDING,
-                )
-                self._documents.add(
-                    doc, self._version(doc_id, version, content_hash, content, ctx, now), content
-                )
-            # 3b. Versión nueva de un documento existente
-            else:
-                doc = self._documents.get(collection_id, document_id)
-                if doc is None:
-                    raise NotFound("Documento no encontrado")
-                doc_id = doc.id
-                history = self._documents.history(collection_id, doc_id)
-                # "Sin cambios" se decide frente a la versión VIGENTE (la indexada), no frente
-                # a la última subida: si esa se canceló o falló, el contenido sigue sin indexar.
-                current = next((v for v in history if v.version == doc.current_version), None)
-                if current is not None and current.content_hash == content_hash:
-                    self.k.recorder.record(
-                        ctx,
-                        self.action,
-                        Outcome.SUCCEEDED,
+            # 3. Todo lo que cambia (documento, versión, trabajo y registro) se confirma junto
+            with self.k.uow.transaction():
+                if document_id is None:
+                    # 3a. Documento nuevo
+                    if len(self._documents.list(collection_id)) >= settings.max_documents:
+                        raise CapacityExceeded("La colección alcanzó su máximo de documentos")
+                    doc_id = self.k.ids.new_id("doc")
+                    version = 1
+                    job_type = JobType.INGEST
+                    doc = Document(
+                        id=doc_id,
                         collection_id=collection_id,
-                        target={"document_id": doc_id, "version": current.version},
-                        details={"unchanged": True},
-                        started=started,
+                        title=title.strip(),
+                        source_type=source_type,
+                        current_version=0,
+                        status=DocumentStatus.PENDING,
                     )
-                    return SubmitResult(doc_id, current.version, None, True, ctx.correlation_id)
-                version = history[-1].version + 1
-                job_type = JobType.MODIFY
-                self._documents.add_version(
-                    collection_id,
-                    doc_id,
-                    self._version(doc_id, version, content_hash, content, ctx, now),
-                    content,
-                )
+                    self._documents.add(
+                        doc, self._version(doc_id, version, content_hash, content, ctx, now), content
+                    )
+                else:
+                    # 3b. Versión nueva de un documento existente
+                    doc = self._documents.get(collection_id, document_id)
+                    if doc is None:
+                        raise NotFound("Documento no encontrado")
+                    doc_id = doc.id
+                    history = self._documents.history(collection_id, doc_id)
+                    # "Sin cambios" se decide frente a la versión VIGENTE (la indexada), no frente
+                    # a la última subida: si esa se canceló o falló, el contenido sigue sin indexar.
+                    current = next((v for v in history if v.version == doc.current_version), None)
+                    if current is not None and current.content_hash == content_hash:
+                        self.k.recorder.record(
+                            ctx,
+                            self.action,
+                            Outcome.SUCCEEDED,
+                            collection_id=collection_id,
+                            target={"document_id": doc_id, "version": current.version},
+                            details={"unchanged": True},
+                            started=started,
+                        )
+                        return SubmitResult(doc_id, current.version, None, True, ctx.correlation_id)
+                    version = history[-1].version + 1
+                    job_type = JobType.MODIFY
+                    self._documents.add_version(
+                        collection_id,
+                        doc_id,
+                        self._version(doc_id, version, content_hash, content, ctx, now),
+                        content,
+                    )
 
-            job = self._queue.enqueue(
-                Job(
-                    id=self.k.ids.new_id("job"),
+                job = self._queue.enqueue(
+                    Job(
+                        id=self.k.ids.new_id("job"),
+                        collection_id=collection_id,
+                        type=job_type,
+                        target=doc_id,
+                        version=version,
+                        status=JobStatus.QUEUED,
+                        actor=ctx.actor,
+                        correlation_id=ctx.correlation_id,
+                        created_at=now,
+                        idempotency_key=idempotency_key,
+                        max_attempts=self._max_attempts,
+                    )
+                )
+                self.k.recorder.record(
+                    ctx,
+                    self.action,
+                    Outcome.SUCCEEDED,
                     collection_id=collection_id,
-                    type=job_type,
-                    target=doc_id,
-                    version=version,
-                    status=JobStatus.QUEUED,
-                    actor=ctx.actor,
-                    correlation_id=ctx.correlation_id,
-                    created_at=now,
-                    idempotency_key=idempotency_key,
-                    max_attempts=self._max_attempts,
+                    target={"document_id": doc_id, "version": version, "job_id": job.id},
+                    details={
+                        "content_hash": content_hash,
+                        "size": len(content),
+                        "job_type": job_type.value,
+                    },
+                    started=started,
                 )
-            )
-
-        self.k.recorder.record(
-            ctx,
-            self.action,
-            Outcome.SUCCEEDED,
-            collection_id=collection_id,
-            target={"document_id": doc_id, "version": version, "job_id": job.id},
-            details={"content_hash": content_hash, "size": len(content), "job_type": job_type.value},
-            started=started,
-        )
-        return SubmitResult(doc_id, version, job, False, ctx.correlation_id)
+            return SubmitResult(doc_id, version, job, False, ctx.correlation_id)
 
     def _version(self, doc_id, version, content_hash, content, ctx, now) -> DocumentVersion:
         return DocumentVersion(

@@ -31,4 +31,4 @@ Cambiar de adaptadores modificando solo la composición.
 ## Estado
 
 Implementado: la orden `check`, con tests.
-Pendiente: construir los adaptadores reales y arrancar API, MCP y worker. Hoy el registro de adaptadores está vacío, por eso `check` avisa de que hay adaptadores pendientes.
+Pendiente: componer los casos de uso con los adaptadores que pida la plantilla y arrancar API, MCP y worker. `check` descubre los adaptadores instalados por entry point; hoy faltan `embedder: none` y `authenticator: token`.
