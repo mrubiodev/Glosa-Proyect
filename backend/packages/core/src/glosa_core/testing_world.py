@@ -51,6 +51,7 @@ from .usecases import (
     SearchCollection,
     SubmitDocument,
     VerifyOperationLog,
+    ViewTrace,
 )
 
 
@@ -128,6 +129,7 @@ class World:
         self.cancel_job = CancelJob(self.kernel, self.queue, self.documents)
         self.query_ops = QueryOperations(self.kernel, self.log)
         self.verify_ops = VerifyOperationLog(self.kernel, self.log)
+        self.view_trace = ViewTrace(self.kernel, self.log)
 
     # --- ayudas ---------------------------------------------------------
 

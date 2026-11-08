@@ -38,19 +38,28 @@ def test_produccion_insegura_no_arranca(tmp_path, capsys):
     assert "query_logging" in capsys.readouterr().err
 
 
-def test_strict_falla_mientras_falten_adaptadores(capsys):
-    assert main(["check", "--strict"], env={}) == 1
-    assert "no está registrado" in capsys.readouterr().err
+def test_con_todos_los_adaptadores_instalados_el_modo_estricto_pasa(capsys):
+    assert main(["check", "--strict"], env={}) == 0
+    out = capsys.readouterr().out
+    assert "Plantilla válida" in out and "pendientes" not in out
 
 
-def test_los_adaptadores_instalados_se_descubren_solos(capsys):
-    """Ingest y storage se registran por entry point; solo quedan dos pendientes."""
-    assert main(["check", "--strict"], env={}) == 1
+def test_el_modo_estricto_falla_si_faltan_adaptadores(capsys):
+    from glosa_app.cli import check
+    from glosa_templates import Registry
+
+    assert check({}, strict=True, registry=Registry()) == 1  # un registro vacío
     err = capsys.readouterr().err
-    for implemented in ("markdown", "text", "headings", "sqlite", "sqlite-fts5"):
-        assert f"'{implemented}'" not in err
-    for pending in ("none", "token"):
-        assert f"'{pending}'" in err
+    for name in ("markdown", "headings", "sqlite", "sqlite-fts5", "none", "token"):
+        assert f"'{name}'" in err
+
+
+def test_sin_modo_estricto_los_adaptadores_que_faltan_solo_avisan(capsys):
+    from glosa_app.cli import check
+    from glosa_templates import Registry
+
+    assert check({}, strict=False, registry=Registry()) == 0
+    assert "Adaptadores pendientes de implementar" in capsys.readouterr().out
 
 
 def test_sin_orden_el_parser_exige_una(capsys):

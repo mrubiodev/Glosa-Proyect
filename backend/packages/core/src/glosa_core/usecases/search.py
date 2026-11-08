@@ -26,15 +26,18 @@ class SearchCollection(UseCase):
         collections: CollectionRepository,
         index: ChunkIndex,
         strategy: str = "text",
+        default_limit: int = 5,
     ) -> None:
         super().__init__(kernel)
         self._collections = collections
         self._index = index
         self._strategy = strategy
+        self._default_limit = default_limit
 
     def execute(
-        self, ctx: RequestContext, collection_id: str, query: str, limit: int = 5
+        self, ctx: RequestContext, collection_id: str, query: str, limit: int | None = None
     ) -> list[SearchHit]:
+        limit = self._default_limit if limit is None else limit
         started = self.k.clock.now()
         self._require(ctx, collection_id, Permission.SEARCH, self.action)
         with self._guard(ctx, self.action, collection_id, started):

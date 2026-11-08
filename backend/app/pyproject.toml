@@ -7,7 +7,7 @@ name = "glosa-app"
 version = "0.1.0"
 description = "Composición y arranque"
 requires-python = ">=3.11"
-dependencies = ["glosa-core", "glosa-templates", "glosa-ingest", "glosa-storage"]
+dependencies = ["glosa-core", "glosa-templates", "glosa-ingest", "glosa-storage", "glosa-worker", "glosa-explain"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]

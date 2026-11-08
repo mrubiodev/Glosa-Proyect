@@ -75,6 +75,8 @@ class AuthorizationService:
 
     def permissions_of(self, actor: Actor, collection_id: str) -> frozenset[Permission]:
         """Permisos que el actor tiene sobre esa colección (vacío si ninguno)."""
+        if actor.kind is ActorKind.SYSTEM:
+            return frozenset()  # el sistema deja constancia, pero no pasa por la autorización
         if actor.kind is ActorKind.TOKEN:
             # El token fija la colección: en cualquier otra, no puede nada.
             if actor.collection_id != collection_id:

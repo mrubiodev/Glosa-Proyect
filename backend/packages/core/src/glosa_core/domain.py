@@ -23,6 +23,7 @@ class Scope(StrEnum):
 class ActorKind(StrEnum):
     USER = "user"
     TOKEN = "token"
+    SYSTEM = "system"  # el propio sistema (arranque, tareas internas): no tiene permisos
 
 
 class DocumentStatus(StrEnum):
@@ -59,6 +60,7 @@ class Channel(StrEnum):
     API = "api"
     MCP = "mcp"
     WORKER = "worker"
+    SYSTEM = "system"
 
 
 class Strategy(StrEnum):

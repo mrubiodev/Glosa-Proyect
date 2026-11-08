@@ -6,7 +6,7 @@ los manejadores (`handlers.py`) a través de `ProcessNextJob`.
 
 Implementados: CreateCollection, IssueToken, RevokeToken, SubmitDocument,
 SearchCollection, ReadDocument, ListDocuments, GetJob, ListJobs, CancelJob,
-QueryOperations, VerifyOperationLog, HandleIngest (ingest y modify) y
+QueryOperations, VerifyOperationLog, ViewTrace, HandleIngest (ingest y modify) y
 ProcessNextJob. El resto está en docs/PENDIENTE.md.
 """
 from .access_tokens import IssuedToken, IssueToken, RevokeToken
@@ -17,6 +17,7 @@ from .job_admin import CancelJob, GetJob, ListJobs
 from .jobs import ProcessNextJob
 from .operations import QueryOperations, VerifyOperationLog
 from .search import SearchCollection
+from .trace import ViewTrace
 
 __all__ = [
     "CancelJob",
@@ -36,4 +37,5 @@ __all__ = [
     "SubmitDocument",
     "SubmitResult",
     "VerifyOperationLog",
+    "ViewTrace",
 ]

@@ -7,9 +7,16 @@
 # Las plantillas de cliente se montan desde ./examples/templates (solo lectura).
 # Para usar las tuyas, cambia ese volumen o apúntalo a tu repositorio privado.
 #
-# Los servicios api, mcp y worker están definidos pero agrupados en el perfil
-# "pendiente": sus adaptadores todavía no están implementados (docs/SPEC.md §17).
-# Cuando existan, basta con quitar la línea `profiles` de cada uno.
+# El worker procesa la cola (subidas, modificaciones...) y es el único servicio de larga
+# duración que existe hoy; va en su propio perfil para que `docker compose up` siga
+# validando y terminando:
+#
+#   docker compose --profile worker up worker
+#   docker compose --profile worker up --scale worker=3     (varios workers a la vez)
+#
+# Los servicios api y mcp están definidos pero agrupados en el perfil "pendiente": sus
+# adaptadores todavía no están implementados (docs/SPEC.md §17). Cuando existan, basta con
+# quitar la línea `profiles` de cada uno.
 
 name: glosa
 
@@ -69,12 +76,12 @@ services:
 
   worker:
     <<: *glosa
-    profiles: ["pendiente"]
-    command: ["python", "-m", "glosa_worker"]
+    profiles: ["worker"]
+    command: ["python", "-m", "glosa_app", "worker"]
     volumes:
       - ./examples/templates:/app/templates:ro
       - glosa-data:/data
-    # El worker puede escalarse: docker compose --profile pendiente up --scale worker=3
+    stop_grace_period: 60s  # al pararlo termina el trabajo en curso antes de salir
 
 volumes:
   glosa-data:

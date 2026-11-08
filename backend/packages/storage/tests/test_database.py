@@ -101,3 +101,70 @@ def test_los_datos_persisten_tras_cerrar_y_reabrir(tmp_path):
         insert(first, "c1")
     first.close()
     assert count(Database(path)) == 1
+
+
+# --- cierre de conexiones ------------------------------------------------------
+
+def test_cada_hilo_tiene_su_conexion_y_close_las_cierra_todas(tmp_path):
+    import threading
+
+    db = Database(tmp_path / "g.db")
+    barrier = threading.Barrier(4)
+    release = threading.Event()
+    seen: list = []
+
+    def work():
+        seen.append(db.conn())
+        barrier.wait()  # los cuatro hilos siguen vivos a la vez, cada uno con su conexión
+        release.wait()
+
+    threads = [threading.Thread(target=work) for _ in range(3)]
+    for t in threads:
+        t.start()
+    barrier.wait()
+    db.conn()  # y la del hilo principal
+    assert db.open_connections() == 4
+
+    db.close()  # desde el hilo principal, cierra también las de los otros hilos
+    release.set()
+    for t in threads:
+        t.join()
+    for conn in seen:
+        with pytest.raises(sqlite3.ProgrammingError):
+            conn.execute("SELECT 1")
+    assert db.open_connections() == 0
+
+
+def test_tras_cerrar_la_base_no_se_puede_usar(tmp_path):
+    db = Database(tmp_path / "g.db")
+    db.close()
+    with pytest.raises(RuntimeError, match="cerrada"):
+        db.conn()
+    with pytest.raises(RuntimeError, match="cerrada"):
+        with db.transaction():
+            pass
+
+
+def test_las_conexiones_de_hilos_que_terminan_no_se_acumulan(tmp_path):
+    import threading
+
+    db = Database(tmp_path / "g.db")
+    for _ in range(20):  # una API con un hilo nuevo por petición
+        t = threading.Thread(target=db.conn)
+        t.start()
+        t.join()
+    assert db.open_connections() <= 1  # solo queda, como mucho, la del último hilo en barrerse
+    db.close()
+
+
+def test_cerrar_dos_veces_no_falla(tmp_path):
+    db = Database(tmp_path / "g.db")
+    db.close()
+    db.close()
+
+
+def test_la_base_en_memoria_tambien_se_cierra():
+    db = Database(":memory:")
+    db.close()
+    with pytest.raises(RuntimeError, match="cerrada"):
+        db.conn()

@@ -12,14 +12,16 @@ El proyecto está en fase de diseño con un núcleo ya implementado.
 
 | Pieza | Estado |
 |-------|--------|
-| Especificación (v0.4.4), ADRs, contrato OpenAPI | Hecho |
+| Especificación (v0.4.5), ADRs, contrato OpenAPI | Hecho |
 | Núcleo: entidades, puertos, permisos, tokens, registro encadenado | Implementado, con tests |
 | Plantillas de cliente (carga, herencia, guardia de producción) | Implementado, con tests |
 | Dockerfile y docker-compose | Hechos |
-| Casos de uso (14 de 25) y las 14 pruebas obligatorias | Implementado, con tests |
+| Casos de uso (15 de 25) y las 14 pruebas obligatorias | Implementado, con tests |
 | Almacenamiento SQLite (documentos, búsqueda FTS5, cola, registro, transacciones) | Implementado, con tests |
 | Extractores de texto y Markdown, chunker por encabezados | Implementado, con tests |
-| Proceso del worker, API, servidor MCP | Pendiente |
+| Composición desde la plantilla, worker como proceso y trazas legibles | Implementado, con tests |
+| **Recorrido subir → indexar → buscar → ver la traza, sin HTTP** | **Funciona** |
+| API HTTP y servidor MCP | Pendiente |
 | Frontend | Pendiente |
 
 ## Inicio rápido
@@ -30,7 +32,7 @@ El proyecto está en fase de diseño con un núcleo ya implementado.
 cd backend
 python -m venv .venv && source .venv/bin/activate
 make install
-make test        # 228 tests en memoria + los 81 de core contra SQLite
+make test        # 289 tests en memoria + los 90 de core contra SQLite
 make check       # valida la plantilla activa
 ```
 
@@ -40,6 +42,7 @@ make check       # valida la plantilla activa
 cd backend
 docker compose up                              # valida la plantilla y termina
 GLOSA_TEMPLATE=profesional docker compose up
+docker compose --profile worker up worker      # el worker de la cola
 docker compose --profile test run --rm tests
 ```
 
@@ -96,4 +99,4 @@ Si lo usas y puedes, ayuda a que siga adelante. Es voluntario y no condiciona la
 
 ## Siguiente paso
 
-Componer todo en `app` (crear la base, construir los casos de uso con los adaptadores que pida la plantilla) y levantar el worker, que cierra el recorrido subir → indexar → buscar sin HTTP. Después, la API y el servidor MCP. Todo lo pendiente, al día, está en [`docs/PENDIENTE.md`](docs/PENDIENTE.md).
+La API HTTP y el servidor MCP. Antes hay que decidir cómo se crean y autentican los usuarios y qué framework web usar (ver `docs/PENDIENTE.md`). Todo lo pendiente, al día, está en [`docs/PENDIENTE.md`](docs/PENDIENTE.md).

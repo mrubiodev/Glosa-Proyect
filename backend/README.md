@@ -20,7 +20,7 @@ Dockerfile · docker-compose.yml · Makefile
 ```bash
 python -m venv .venv && source .venv/bin/activate
 make install
-make test        # 228 tests en memoria + los 81 de core contra SQLite
+make test        # 289 tests en memoria + los 90 de core contra SQLite
 make check       # valida la plantilla activa
 ```
 
@@ -29,10 +29,11 @@ make check       # valida la plantilla activa
 ```bash
 docker compose up                              # valida la plantilla "didactico" y termina
 GLOSA_TEMPLATE=profesional docker compose up   # valida la plantilla "profesional"
+docker compose --profile worker up worker      # el worker de la cola (escalable con --scale worker=3)
 docker compose --profile test run --rm tests   # tests dentro de un contenedor
 ```
 
-Los servicios `api`, `mcp` y `worker` están definidos pero agrupados en el perfil `pendiente` hasta que existan sus adaptadores. Detalles en `docs/SPEC.md` §17.
+Los servicios `api` y `mcp` están definidos pero agrupados en el perfil `pendiente` hasta que existan sus adaptadores. Detalles en `docs/SPEC.md` §17.
 
 > Nota: el `Dockerfile` y el `docker-compose.yml` se comprobaron reproduciendo sus pasos fuera de Docker (instalación no editable en entorno limpio, `check` y tests). La primera construcción real con Docker puede pedir algún ajuste.
 
@@ -63,11 +64,13 @@ La lista completa y al día de lo que falta está en [`../docs/PENDIENTE.md`](..
 | Pieza | Estado |
 |-------|--------|
 | `core`: entidades, puertos, autorización, tokens, encadenado de hashes | Implementado, con tests |
-| `core`: casos de uso | 14 de 25 implementados, con las 14 pruebas obligatorias |
+| `core`: casos de uso | 15 de 25 implementados, con las 14 pruebas obligatorias |
 | `templates`: carga con herencia, esquema, guardia de producción, registro de adaptadores | Implementado, con tests |
-| `app`: orden `check` | Implementado, con tests |
+| `app`: composición desde la plantilla y órdenes `check` y `worker` | Implementado, con tests |
 | `ingest`: extractores de texto y Markdown, chunker por encabezados | Implementado, con tests |
 | `storage`: SQLite (documentos, FTS5, cola, registro, colecciones, accesos, transacciones) | Implementado, con tests |
-| `retrieval`, `explain` | Esqueleto |
-| `http-api`, `mcp-server`, `worker` | Esqueleto (su punto de entrada avisa de que está pendiente) |
+| `explain`: trazas legibles del registro de operaciones | Implementado, con tests |
+| `retrieval` | Pospuesto a propósito hasta que haya varias estrategias (ADR 0034) |
+| `worker`: bucle con paro ordenado | Implementado, con tests |
+| `http-api`, `mcp-server` | Esqueleto (su punto de entrada avisa de que está pendiente) |
 | `Dockerfile`, `docker-compose.yml` | Hechos; `check` y `tests` operativos |

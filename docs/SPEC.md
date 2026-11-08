@@ -1,4 +1,4 @@
-# Glosa — Especificación v0.4.4
+# Glosa — Especificación v0.4.5
 
 > Estado: borrador · Idioma: español · Formato: Markdown versionado
 >
@@ -11,6 +11,8 @@
 > **v0.4.3:** se completan las consultas de trabajos y del registro de operaciones (`GetJob`, `ListJobs`, `CancelJob`, `QueryOperations`, `VerifyOperationLog`) y se implementan los adaptadores de `ingest`: extractores de texto y Markdown y chunker por encabezados (§8).
 >
 > **v0.4.4:** se implementan los adaptadores de `storage` sobre SQLite (documentos, índice FTS5, cola, registro de operaciones, colecciones y accesos), con el puerto `UnitOfWork` para que las escrituras relacionadas se confirmen juntas (§8).
+>
+> **v0.4.5:** se cierra el recorrido subir → indexar → buscar → ver la traza sin HTTP: composición del sistema desde la plantilla (`build_app`), worker como proceso (`glosa_app worker`), caso de uso `ViewTrace` y el paquete `explain` (§15, §17). `Database.close()` cierra ya las conexiones de todos los hilos.
 
 ## 1. Objetivo
 
@@ -170,6 +172,7 @@ El servicio de autorización vive en `core` y es la **única** pieza que decide 
 
 - **Usuario** (acceso por API, normalmente desde el frontend): su permiso depende de su `role` en la colección.
 - **Token** (acceso por MCP u otras integraciones): su permiso depende de sus `scopes` y siempre está atado a una única colección.
+- **Sistema** (el arranque y las tareas internas): deja constancia en el registro, pero **no tiene ningún permiso** sobre ninguna colección.
 
 ### 7.2 Roles de usuario
 
@@ -443,7 +446,7 @@ El `OperationLog` es la **fuente única de verdad** de todo lo que ocurre en el 
 | `at`             | Marca de tiempo                                                                |
 | `correlation_id` | Une toda la cadena: petición → trabajo → pasos → resultado                     |
 | `actor`          | Usuario o token (con su identificador, nunca el valor del token)               |
-| `channel`        | `api` · `mcp` · `worker`                                                       |
+| `channel`        | `api` · `mcp` · `worker` · `system`                                            |
 | `action`         | Nombre de la operación (`document.ingest`, `search.execute`, `token.issue`, ...) |
 | `collection_id`  | Colección afectada                                                             |
 | `target`         | Documento, versión y/o trabajo afectados                                       |
@@ -665,6 +668,21 @@ Cada paquete incluye en su `README.md`:
 3. **Cómo se usa** suelto, con un ejemplo mínimo.
 4. **Qué se puede cambiar** (puertos y adaptadores alternativos).
 
+### Paquete `explain` (implementado)
+
+Convierte las entradas del registro que comparten un `correlation_id` en una **traza** que se lee paso a paso. El caso de uso `ViewTrace` (editor o superior) devuelve las entradas; `explain.build_trace` las presenta. `explain` solo depende de `core` y nadie depende de él.
+
+| Campo de `Trace`   | Contenido                                                                              |
+|--------------------|----------------------------------------------------------------------------------------|
+| `steps`            | Cada paso con su título y detalle en lenguaje llano, canal, actor, hora y duración     |
+| `outcome`          | `succeeded`, `failed`, `denied` o `in_progress`                                        |
+| `channels`         | Canales por los que pasó, en orden (por ejemplo `api` → `worker`)                      |
+| `duration_ms`      | De la primera a la última entrada                                                      |
+
+Reglas del resultado: cualquier denegación → `denied`; un trabajo muerto o un paso fallido sin reintento → `failed`; un trabajo que empezó o espera un reintento, o una subida aún sin procesar → `in_progress`; si no, `succeeded`. Un reintento que acaba bien es `succeeded`, y el fallo intermedio **se conserva** en la traza.
+
+Los títulos están en español llano (`Texto dividido en fragmentos`, `El trabajo falló y se reintentará`, `Acceso denegado`...) y una prueba comprueba que toda acción del sistema tiene su descripción. Una acción que `explain` aún no conozca no rompe la traza: se muestra con su nombre técnico. `Trace.to_text()` la presenta como texto para una terminal o un informe. Si la colección usa `query_logging: hash_only`, la traza de una búsqueda dice que la consulta no se guardó, en lugar de mostrarla.
+
 ## 16. Evaluación
 
 - Conjunto de preguntas de prueba en `examples/` con el documento y fragmento esperados.
@@ -695,9 +713,9 @@ Imagen multietapa, con el contexto de construcción en `backend/`:
 | `tests`   | Operativo (perfil `test`) | Ejecuta los tests dentro de un contenedor                                |
 | `api`     | Pendiente (perfil `pendiente`) | API de gestión, puerto 8000                                        |
 | `mcp`     | Pendiente (perfil `pendiente`) | Servidor MCP, puerto 8001                                          |
-| `worker`  | Pendiente (perfil `pendiente`) | Consumidor de la cola; escalable con `--scale worker=N`            |
+| `worker`  | Operativo (perfil `worker`)    | Procesa la cola; escalable con `--scale worker=N`                  |
 
-- Los tres servicios pendientes están definidos pero agrupados en un perfil, de modo que `docker compose up` no los arranca. Cuando existan los adaptadores basta con quitar la línea `profiles`. Hasta entonces, su punto de entrada termina con un mensaje claro y código de salida 2.
+- `api` y `mcp` están definidos pero agrupados en el perfil `pendiente`, de modo que `docker compose up` no los arranca; cuando existan los adaptadores basta con quitar la línea `profiles`. Hasta entonces, su punto de entrada termina con un mensaje claro y código de salida 2. El `worker` va en su propio perfil (`docker compose --profile worker up worker`) para que `docker compose up` siga validando y terminando; su `stop_grace_period` es de 60 s para que, al pararlo, termine el trabajo en curso.
 - Todos los servicios corren con sistema de archivos de solo lectura, sin capacidades de Linux y con `no-new-privileges`.
 - Las plantillas de cliente se montan en solo lectura desde `examples/templates`; para usar otras se cambia ese volumen.
 - Los datos (`/data`) van en el volumen con nombre `glosa-data`.
@@ -708,7 +726,9 @@ Imagen multietapa, con el contexto de construcción en `backend/`:
 |------------------------|--------------------------------------------------------------------------------|--------------|
 | `GLOSA_TEMPLATE`       | Plantilla activa: preset, nombre de fichero en `GLOSA_TEMPLATE_DIRS` o ruta    | `didactico`  |
 | `GLOSA_TEMPLATE_DIRS`  | Carpetas con plantillas de cliente, separadas por `:`                          | `/app/templates` en la imagen |
-| `GLOSA_DATA_DIR`       | Carpeta de datos                                                               | `/data`      |
+| `GLOSA_DATA_DIR`       | Carpeta de datos (la base `glosa.db` vive aquí)                                | `./data` (`/data` en la imagen) |
+| `GLOSA_WORKER_ID`      | Identidad del worker en el registro de trabajos                                | `<host>-<pid>` |
+| `GLOSA_WORKER_LEASE_SECONDS` | Plazo que el worker se reserva cada trabajo antes de que otro lo recupere | `300`        |
 
 Al arrancar se valida la plantilla. En modo `production` el arranque se aborta si la guardia de producción detecta algún problema (ver §18.4). La orden `python -m glosa_app check` hace esa comprobación sin arrancar nada; con `--strict` también falla si la plantilla pide adaptadores que no están registrados (hoy ninguno lo está).
 
@@ -718,6 +738,29 @@ Al arrancar se valida la plantilla. En modo `production` el arranque se aborta s
 - El frontend se despliega por separado, o se sirve como estático.
 - El README del backend explica cómo conectar el servidor MCP a un cliente compatible.
 - El README del frontend explica cómo apuntarlo a otra instancia del backend.
+
+### 17.5 Composición y worker
+
+`glosa_app.build_app(template, data_dir=...)` (o `build_from_env`) es el único sitio donde se construye el sistema:
+
+1. Aplica la **guardia de producción**: una plantilla insegura no arranca y ni siquiera crea la base de datos.
+2. Comprueba que todos los adaptadores que pide la plantilla estén registrados; si no, falla con la lista de los que faltan (`ConfigurationError`).
+3. Construye los adaptadores por el nombre que pide la plantilla (convención de las fábricas: `storage(data_dir)`, `queue(storage, clock)`, `index(storage)`) y cablea los casos de uso.
+4. Traduce la política de la plantilla a la configuración de los casos de uso: los ajustes con los que nace cada colección, la caducidad por defecto de los tokens y el límite de búsqueda (`retrieval.k`).
+5. Deja constancia del arranque: una entrada `template.applied` en la cadena global del registro, con el nombre, el modo y la **huella** de la plantilla resuelta (actor y canal `system`).
+
+El worker se ejecuta con `python -m glosa_app worker`:
+
+| Opción         | Efecto                                                                                      |
+|----------------|---------------------------------------------------------------------------------------------|
+| (ninguna)      | Se queda esperando trabajos y procesa los que lleguen                                       |
+| `--once`       | Procesa los trabajos que haya listos y termina (uno en espera de reintento no cuenta)       |
+| `--idle-seconds` | Espera cuando no hay trabajos (por defecto, 1 s); se interrumpe al pedir parar            |
+
+- `SIGTERM` y `Ctrl+C` piden parar: el worker **termina el trabajo en curso** y sale.
+- Un fallo de infraestructura (por ejemplo, la base bloqueada) se avisa y se reintenta con espera creciente; tras 20 seguidos el worker se rinde con código de salida 1 para que el orquestador lo reinicie.
+- Códigos de salida: `0` correcto, `1` error de configuración o worker rendido.
+- La lógica de qué hacer con cada trabajo (reintentos, `dead`) vive en `core` (`ProcessNextJob`); el adaptador `worker` solo ofrece el bucle y no conoce colas ni plantillas.
 
 ## 18. Plantillas y adaptación a clientes
 
@@ -773,7 +816,7 @@ Reglas de fusión:
    - `policy.retention_days` no es un número de días mayor que 0;
    - hay secretos escritos en el fichero.
 4. **Secretos por entorno.** Las claves que parecen secretos (`secret`, `password`, `token`, `api_key`) solo admiten referencias `${NOMBRE}`.
-5. **Plantilla activa registrada.** Al arrancar se deja una entrada en el registro de operaciones con el nombre y el hash de la plantilla resuelta.
+5. **Plantilla activa registrada** (implementado). Al arrancar se deja una entrada `template.applied` en el registro de operaciones con el nombre, el modo y la huella de la plantilla resuelta.
 6. **Los ajustes por colección (§10.6) no pueden debilitar la plantilla activa.** Pueden ser iguales o más estrictos. *Regla de diseño pendiente de implementar.*
 
 ### 18.5 Adaptadores como plugins
@@ -853,6 +896,18 @@ A los usuarios y pequeñas empresas se les pide, sin obligación y sin que condi
 | **0.5** | OIDC para usuarios y OAuth 2.1 para clientes MCP remotos, herramientas MCP de escritura con `write` |
 
 ## 21. Registro de cambios
+
+### v0.4.5
+- `app`: composición del sistema desde la plantilla (`build_app`, `build_from_env`), con guardia de producción, comprobación de adaptadores y traducción de la política de la plantilla a la configuración de los casos de uso.
+- `worker`: el bucle del proceso (`run`, `drain`) y la orden `python -m glosa_app worker` con `--once`, paro ordenado por señales y espera creciente ante fallos de infraestructura.
+- `ViewTrace` (caso de uso) y paquete `explain` (`build_trace`): la traza de una operación, paso a paso y en lenguaje llano.
+- Actor y canal `system` para eventos sin persona (el arranque); sin ningún permiso.
+- El arranque deja una entrada `template.applied` con la huella de la plantilla (`Template.fingerprint`).
+- `SearchCollection` acepta un límite por defecto (`retrieval.k`).
+- Corregido: `Database.close()` solo cerraba la conexión del hilo que lo llamaba; ahora cierra las de todos los hilos y descarta las de los hilos que terminan.
+- Los adaptadores `authenticator: token` y `embedder: none` se registran desde `app`; `check --strict` pasa con los presets.
+- `docker-compose`: el servicio `worker` es operativo (perfil `worker`).
+- ADRs 0031 a 0034. Total: 25 casos de uso, 15 implementados.
 
 ### v0.4.4
 - `storage`: adaptadores SQLite de colecciones, accesos, documentos (con el contenido de cada versión en la base), índice FTS5, cola, registro de operaciones y `UnitOfWork`, con migraciones numeradas y borrado de colección en cascada.
@@ -951,6 +1006,10 @@ A los usuarios y pequeñas empresas se les pide, sin obligación y sin que condi
 | 0028 | Puerto `UnitOfWork`: las escrituras relacionadas se confirman juntas | Cumplir la atomicidad de §9.4 sin que el dominio conozca SQLite |
 | 0029 | Consulta de texto: palabras entre comillas unidas con OR, orden por bm25 | La entrada del usuario no se interpreta como sintaxis de FTS5 y gana recall |
 | 0030 | Los tests de `core` se ejecutan también contra los adaptadores reales | Una sola batería valida dobles y adaptadores; las pruebas obligatorias cubren ambos |
+| 0031 | La composición construye el sistema desde la plantilla y se niega a arrancar si es insegura o incompleta | Un despliegue mal configurado falla al arrancar, no en producción |
+| 0032 | El worker es un bucle sin lógica de negocio: reintentos y `dead` viven en `core` | El adaptador es intercambiable y la política de reintentos se prueba sin procesos |
+| 0033 | Actor y canal `system` para eventos sin persona, sin ningún permiso | El arranque queda en el registro sin dar permisos a nadie |
+| 0034 | El paquete `retrieval` se pospone hasta que existan varias estrategias de búsqueda | Hoy solo hay una (texto) y una abstracción con una sola implementación no aporta nada |
 
 ## 23. Glosario
 
@@ -991,3 +1050,6 @@ A los usuarios y pequeñas empresas se les pide, sin obligación y sin que condi
 - **WAL:** modo de SQLite en el que las lecturas no bloquean a la escritura.
 - **bm25:** función de relevancia de FTS5 que ordena los resultados por lo bien que encajan con la consulta.
 - **Migración:** cambio numerado del esquema de la base de datos; las ya aplicadas nunca se modifican.
+- **Traza:** el conjunto de entradas del registro que comparten un `correlation_id`, presentado paso a paso, de la petición al resultado.
+- **Huella de la plantilla:** resumen criptográfico de la plantilla ya resuelta; queda en el registro al arrancar para saber con qué configuración se trabajó.
+- **Actor del sistema:** el propio sistema (arranque, tareas internas); deja constancia en el registro pero no tiene ningún permiso.

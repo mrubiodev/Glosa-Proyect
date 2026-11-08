@@ -76,3 +76,16 @@ def test_sqlite_storage_agrupa_los_adaptadores_sobre_una_misma_base(tmp_path):
     assert storage.uow is storage.db
     assert storage.collections._db is storage.access._db is storage.documents._db is storage.log._db
     storage.close()
+
+
+def test_las_fabricas_registradas_construyen_adaptadores_que_comparten_la_base(tmp_path):
+    from glosa_core.testing import FixedClock
+
+    registry = FakeRegistry()
+    register(registry)
+    storage = registry.items[("storage", "sqlite")](tmp_path)  # recibe la carpeta de datos
+    queue = registry.items[("queue", "sqlite")](storage, FixedClock())
+    index = registry.items[("index", "sqlite-fts5")](storage)
+    assert (tmp_path / "glosa.db").exists()
+    assert queue._db is storage.db and index._db is storage.db
+    storage.close()

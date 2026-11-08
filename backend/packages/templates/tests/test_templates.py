@@ -183,3 +183,23 @@ def test_la_plantilla_de_ejemplo_es_valida_y_pasa_la_guardia():
     t = load_template("acme-legal", search_dirs=[EXAMPLES])
     assert t.is_production
     validate_production(t)
+
+
+# --- Huella de la plantilla -----------------------------------------------------
+
+def test_la_huella_es_estable_y_distingue_plantillas():
+    a, b = load_template("didactico"), load_template("didactico")
+    assert a.fingerprint() == b.fingerprint() and len(a.fingerprint()) == 64
+    assert a.fingerprint() != load_template("profesional").fingerprint()
+
+
+def test_la_huella_cambia_con_cualquier_valor_y_no_depende_del_orden(tmp_path):
+    base = {"name": "cli", "extends": "profesional"}
+    one = load_template(write(tmp_path, "a", {**base, "metadata": ["x"]}), search_dirs=[tmp_path])
+    other = load_template(write(tmp_path, "b", {**base, "metadata": ["y"]}), search_dirs=[tmp_path])
+    assert one.fingerprint() != other.fingerprint()
+    reordered = load_template(
+        write(tmp_path, "c", {"metadata": ["x"], "extends": "profesional", "name": "cli"}),
+        search_dirs=[tmp_path],
+    )
+    assert reordered.fingerprint() == one.fingerprint()

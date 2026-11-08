@@ -37,3 +37,6 @@
 - **WAL:** modo de SQLite en el que las lecturas no bloquean a la escritura.
 - **bm25:** función de relevancia de FTS5 que ordena los resultados por lo bien que encajan con la consulta.
 - **Migración:** cambio numerado del esquema de la base de datos; las ya aplicadas nunca se modifican.
+- **Traza:** el conjunto de entradas del registro que comparten un `correlation_id`, presentado paso a paso, de la petición al resultado.
+- **Huella de la plantilla:** resumen criptográfico de la plantilla ya resuelta; queda en el registro al arrancar para saber con qué configuración se trabajó.
+- **Actor del sistema:** el propio sistema (arranque, tareas internas); deja constancia en el registro pero no tiene ningún permiso.

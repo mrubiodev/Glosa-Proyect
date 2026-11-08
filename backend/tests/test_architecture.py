@@ -66,3 +66,13 @@ def test_core_no_importa_nada_externo():
         external |= {m for m in imported_modules(py) if not m.startswith("glosa_")}
     third_party = external - set(sys.stdlib_module_names)
     assert not third_party, f"core importa fuera de la librería estándar: {third_party}"
+
+
+def test_no_hay_dos_ficheros_de_test_con_el_mismo_nombre():
+    """Los paquetes no tienen `__init__.py` en sus tests: pytest identifica cada módulo por su
+    nombre, y dos iguales en carpetas distintas rompen la colección al ejecutarlos juntos."""
+    names: dict[str, list[str]] = {}
+    for py in BACKEND.rglob("test_*.py"):
+        names.setdefault(py.name, []).append(str(py.relative_to(BACKEND)))
+    repeated = {n: paths for n, paths in names.items() if len(paths) > 1}
+    assert not repeated, f"nombres de test repetidos: {repeated}"

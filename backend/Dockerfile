@@ -70,4 +70,4 @@ RUN pip install pytest
 COPY . /src/backend
 WORKDIR /src/backend
 
-CMD ["sh", "-c", "pytest packages/core/tests packages/ingest/tests packages/storage/tests packages/templates/tests app/tests tests -q && GLOSA_TEST_ADAPTERS=glosa_storage.testing:make_adapters pytest packages/core/tests -q"]
+CMD ["sh", "-c", "pytest packages/core/tests packages/explain/tests packages/ingest/tests packages/storage/tests packages/templates/tests adapters/worker/tests app/tests tests -q && GLOSA_TEST_ADAPTERS=glosa_storage.testing:make_adapters pytest packages/core/tests -q"]

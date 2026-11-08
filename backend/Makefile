@@ -10,7 +10,7 @@ test: test-memory test-sqlite
 
 # Toda la batería con los dobles en memoria
 test-memory:
-	pytest packages/core/tests packages/ingest/tests packages/storage/tests packages/templates/tests app/tests tests
+	pytest packages/core/tests packages/explain/tests packages/ingest/tests packages/storage/tests packages/templates/tests adapters/worker/tests app/tests tests
 
 # Las mismas pruebas de core (incluidas las 14 obligatorias) contra los adaptadores SQLite reales
 test-sqlite:

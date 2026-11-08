@@ -34,3 +34,7 @@ Cada decisión relevante se documenta en un fichero numerado. Estados: *Propuest
 | [0028](0028-puerto-unitofwork-las-escrituras-relacionadas-se-c.md) | Puerto `UnitOfWork`: las escrituras relacionadas se confirman juntas | Propuesta |
 | [0029](0029-consulta-de-texto-palabras-entre-comillas-unidas-c.md) | Consulta de texto: palabras entre comillas unidas con OR, orden por bm25 | Propuesta |
 | [0030](0030-los-tests-de-core-se-ejecutan-tambien-contra-los-a.md) | Los tests de `core` se ejecutan también contra los adaptadores reales | Propuesta |
+| [0031](0031-la-composicion-construye-el-sistema-desde-la-plant.md) | La composición construye el sistema desde la plantilla y se niega a arrancar si es insegura o incompleta | Propuesta |
+| [0032](0032-el-worker-es-un-bucle-sin-logica-de-negocio-reinte.md) | El worker es un bucle sin lógica de negocio: reintentos y `dead` viven en `core` | Propuesta |
+| [0033](0033-actor-y-canal-system-para-eventos-sin-persona-sin.md) | Actor y canal `system` para eventos sin persona, sin ningún permiso | Propuesta |
+| [0034](0034-el-paquete-retrieval-se-pospone-hasta-que-existan.md) | El paquete `retrieval` se pospone hasta que existan varias estrategias de búsqueda | Propuesta |

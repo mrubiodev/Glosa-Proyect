@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import sqlite3
 import threading
+import weakref
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
@@ -34,6 +35,11 @@ class Database:
         self._memory = self._path == ":memory:"
         self._busy_timeout_ms = busy_timeout_ms
         self._local = threading.local()
+        self._closed = False
+        # Conexiones abiertas por hilo: (referencia débil al hilo, conexión). Las conexiones de
+        # sqlite3 no admiten referencias débiles, así que se vigila al hilo que las usa.
+        self._registry: dict[int, tuple[weakref.ref, sqlite3.Connection]] = {}
+        self._registry_lock = threading.Lock()
         # En memoria cada conexión sería una base distinta: se comparte una sola
         self._shared = self._connect() if self._memory else None
         self.migrate()
@@ -44,7 +50,9 @@ class Database:
         conn = sqlite3.connect(
             self._path,
             isolation_level=None,  # las transacciones las gestionamos nosotros
-            check_same_thread=not self._memory,
+            # Cada conexión solo la usa el hilo que la creó, pero `close()` puede cerrarlas todas
+            # desde otro hilo, y eso exige desactivar la comprobación.
+            check_same_thread=False,
         )
         conn.row_factory = sqlite3.Row
         conn.execute(f"PRAGMA busy_timeout = {int(self._busy_timeout_ms)}")
@@ -56,19 +64,47 @@ class Database:
 
     def conn(self) -> sqlite3.Connection:
         """Conexión de este hilo (una por hilo, porque SQLite no las comparte)."""
+        if self._closed:
+            raise RuntimeError("La base de datos está cerrada")
         if self._shared is not None:
             return self._shared
         conn = getattr(self._local, "conn", None)
         if conn is None:
             conn = self._local.conn = self._connect()
+            thread = threading.current_thread()
+            with self._registry_lock:
+                self._sweep_dead_threads()
+                self._registry[threading.get_ident()] = (weakref.ref(thread), conn)
         return conn
 
+    def _sweep_dead_threads(self) -> None:
+        """Cierra las conexiones de hilos que ya terminaron. Debe llamarse con el cerrojo."""
+        for ident, (thread_ref, conn) in list(self._registry.items()):
+            thread = thread_ref()
+            if thread is None or not thread.is_alive():
+                try:
+                    conn.close()
+                finally:
+                    del self._registry[ident]
+
+    def open_connections(self) -> int:
+        """Conexiones abiertas ahora mismo (tras descartar las de hilos terminados)."""
+        if self._shared is not None:
+            return 1
+        with self._registry_lock:
+            self._sweep_dead_threads()
+            return len(self._registry)
+
     def close(self) -> None:
-        conn = self._shared or getattr(self._local, "conn", None)
-        if conn is not None:
-            conn.close()
-            self._local.conn = None
-            self._shared = None if self._memory else self._shared
+        """Cierra TODAS las conexiones, de cualquier hilo. Después la base no se puede usar."""
+        with self._registry_lock:
+            self._closed = True
+            for _, conn in self._registry.values():
+                conn.close()
+            self._registry.clear()
+            if self._shared is not None:
+                self._shared.close()
+        self._local = threading.local()
 
     # --- migraciones ------------------------------------------------------------
 

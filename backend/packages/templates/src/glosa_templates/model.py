@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass
 from typing import Any, Mapping
 
@@ -20,6 +22,17 @@ class Template:
                 return default
             node = node[part]
         return node
+
+    def fingerprint(self) -> str:
+        """Huella estable de la plantilla ya resuelta (herencia aplicada).
+
+        Sirve para dejar en el registro QUÉ configuración estaba activa al arrancar: dos
+        plantillas con los mismos valores dan la misma huella, y cualquier cambio la altera.
+        """
+        canonical = json.dumps(
+            self.data, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str
+        )
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     @property
     def is_production(self) -> bool:
