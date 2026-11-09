@@ -1,4 +1,4 @@
-# Glosa — Especificación v0.4.5
+# Glosa — Especificación v0.4.6
 
 > Estado: borrador · Idioma: español · Formato: Markdown versionado
 >
@@ -13,6 +13,8 @@
 > **v0.4.4:** se implementan los adaptadores de `storage` sobre SQLite (documentos, índice FTS5, cola, registro de operaciones, colecciones y accesos), con el puerto `UnitOfWork` para que las escrituras relacionadas se confirmen juntas (§8).
 >
 > **v0.4.5:** se cierra el recorrido subir → indexar → buscar → ver la traza sin HTTP: composición del sistema desde la plantilla (`build_app`), worker como proceso (`glosa_app worker`), caso de uso `ViewTrace` y el paquete `explain` (§15, §17). `Database.close()` cierra ya las conexiones de todos los hilos.
+>
+> **v0.4.6 (solo documentación):** se fija el papel de Glosa frente a ATLAS (reparto de autoridad, reglas R1–R10, modos de origen propio y gobernado), se audita el estado real del proyecto y se propone una hoja de ruta por fases. **No cambia el código.** Ver [`ECOSISTEMA.md`](ECOSISTEMA.md), [`AUDITORIA.md`](AUDITORIA.md), [`INTEGRACION-ATLAS.md`](INTEGRACION-ATLAS.md) y [`HOJA-DE-RUTA.md`](HOJA-DE-RUTA.md).
 
 ## 1. Objetivo
 
@@ -37,6 +39,14 @@ Requisitos transversales:
 - No soporta todos los formatos: solo `.md` y `.txt` en la primera versión.
 - El frontend no es parte del contrato: es un ejemplo de cliente.
 
+### 1.1 Papel de Glosa en el ecosistema
+
+Glosa es un **motor de conocimiento documental**: convierte documentos en conocimiento recuperable y consultable. **No** es un repositorio de memoria ni un sistema de identidad en las colecciones gobernadas por otro sistema. ATLAS, el sistema de memoria y coordinación con el que Glosa debe poder trabajar, conserva la autoridad sobre los documentos originales, la identidad, los permisos y la auditoría global.
+
+Para que esto conviva con funcionar de forma independiente, la autoridad se decide **por colección**: en **modo propio** (lo implementado hoy) Glosa es la autoridad de esa colección; en **modo gobernado** (propuesto, no implementado) lo es el sistema de origen y Glosa solo guarda derivados y referencias.
+
+Nada de la integración con ATLAS está implementado ni verificado, y no se inventan contratos mientras tanto. Detalle en [`ECOSISTEMA.md`](ECOSISTEMA.md) y [`INTEGRACION-ATLAS.md`](INTEGRACION-ATLAS.md).
+
 ## 2. Principios de diseño
 
 1. **El backend es el producto.** Toda la lógica y todos los permisos viven ahí.
@@ -52,6 +62,8 @@ Requisitos transversales:
 11. **Un adaptador por puerto al inicio, interfaces completas desde el principio.**
 12. **Documentar primero.** Cada decisión relevante tiene su ADR.
 13. **La personalización vive en plantillas, no en el código.** Una plantilla elige piezas y ajustes seguros; nunca puede desactivar un invariante.
+14. **No duplicar autoridad.** En una colección gobernada por un sistema externo, Glosa solo guarda derivados y referencias: los documentos originales, la identidad, los permisos y la auditoría global siguen siendo del sistema de origen (R1–R5 y R9 de [`ECOSISTEMA.md`](ECOSISTEMA.md)).
+15. **Los índices son derivados y reconstruibles.** Un índice nunca es la fuente de verdad y todo lo indexado conserva su procedencia (R6 a R8).
 
 ## 3. Visión general
 
@@ -163,6 +175,10 @@ Estados de `Document`: `pending` → `processing` → `ready` | `failed`.
 - Todo `Chunk`, `Document` y `Job` lleva `collection_id`. Ninguna consulta se ejecuta sin él.
 - Los fragmentos indexados pertenecen a una **versión** concreta. Solo se buscan los de la versión vigente.
 - Una versión nunca se modifica: un cambio crea una versión nueva.
+
+### Evolución prevista del dominio (propuesta, no implementada)
+
+Para el modo gobernado y la procedencia se prevén: `Collection.origin`, `SourceRef` (origen, referencia y versión de origen), `AuthorizedContext` y `DerivationInfo`, y los puertos `DocumentSource`, `AuthorizationProvider` y `ChangeFeed`. Ninguno existe en el código. Detalle en [`ECOSISTEMA.md`](ECOSISTEMA.md).
 
 ## 7. Autorización
 
@@ -887,6 +903,8 @@ A los usuarios y pequeñas empresas se les pide, sin obligación y sin que condi
 
 ## 20. Hoja de ruta
 
+> Esta tabla resume las **versiones del producto**. La hoja de ruta estratégica por fases (0 a 6), con sus issues propuestas, dependencias de ATLAS y criterios de aceptación, está en [`HOJA-DE-RUTA.md`](HOJA-DE-RUTA.md).
+
 | Versión | Contenido                                                                                           |
 |---------|-----------------------------------------------------------------------------------------------------|
 | **0.1** | Núcleo, ingesta `.md`/`.txt`, SQLite FTS5, roles y tokens con scopes, cola en SQLite con worker, registro de operaciones con encadenado, versionado de documentos, MCP de solo lectura, API con OpenAPI, evaluación mínima, paquete `templates` con los presets `didactico` y `profesional`, ficheros de licencia |
@@ -896,6 +914,15 @@ A los usuarios y pequeñas empresas se les pide, sin obligación y sin que condi
 | **0.5** | OIDC para usuarios y OAuth 2.1 para clientes MCP remotos, herramientas MCP de escritura con `write` |
 
 ## 21. Registro de cambios
+
+### v0.4.6 (solo documentación)
+- Nuevo [`ECOSISTEMA.md`](ECOSISTEMA.md): reparto de autoridad entre ATLAS y Glosa, reglas R1–R10 y los modos de origen propio y gobernado (propuesto).
+- Nuevo [`AUDITORIA.md`](AUDITORIA.md): 42 capacidades clasificadas contra el código y los tests, 16 problemas arquitectónicos y 10 riesgos de seguridad. La Issue #1 queda **sin verificar** (no se pudo consultar).
+- Nuevo [`INTEGRACION-ATLAS.md`](INTEGRACION-ATLAS.md): matriz de 10 contratos (sin verificar en el lado de ATLAS), 7 invariantes y 14 problemas por resolver. No se inventa ningún contrato.
+- Nueva [`HOJA-DE-RUTA.md`](HOJA-DE-RUTA.md): fases 0 a 6 con issues propuestas (`G-nnn`), dependencias y criterios de aceptación.
+- Principios 14 y 15, §1.1 y la evolución prevista del dominio.
+- ADRs 0035 a 0039, todos **propuestos**: autoridad por colección, índices derivados, contratos explícitos, re-comprobación al consultar y alcance del RAG.
+- Hallazgo de la auditoría: un trabajo se ejecuta con los permisos del momento de encolar (A-02).
 
 ### v0.4.5
 - `app`: composición del sistema desde la plantilla (`build_app`, `build_from_env`), con guardia de producción, comprobación de adaptadores y traducción de la política de la plantilla a la configuración de los casos de uso.
@@ -1010,6 +1037,11 @@ A los usuarios y pequeñas empresas se les pide, sin obligación y sin que condi
 | 0032 | El worker es un bucle sin lógica de negocio: reintentos y `dead` viven en `core` | El adaptador es intercambiable y la política de reintentos se prueba sin procesos |
 | 0033 | Actor y canal `system` para eventos sin persona, sin ningún permiso | El arranque queda en el registro sin dar permisos a nadie |
 | 0034 | El paquete `retrieval` se pospone hasta que existan varias estrategias de búsqueda | Hoy solo hay una (texto) y una abstracción con una sola implementación no aporta nada |
+| 0035 | Autoridad por colección: modo propio o modo gobernado por un sistema externo (ATLAS) | Resuelve el choque entre no duplicar autoridad (R1–R5) y funcionar sin ATLAS (R10): cada colección declara quién es su autoridad |
+| 0036 | Los índices son derivados y reconstruibles | Un índice se puede tirar y volver a generar desde el origen; nunca es la fuente de verdad (R6) |
+| 0037 | La integración con ATLAS se hace por contratos explícitos y no se implementa hasta que existan y estén verificados | Evita inventar contratos y dar por hecha una integración que solo existe en un documento de diseño |
+| 0038 | En modo gobernado la autorización se vuelve a comprobar al consultar y falla cerrada | Haber estado autorizado cuando se indexó no basta: una revocación o un borrado deben dejar de servirse (I1, I2) |
+| 0039 | RAG en Glosa es recuperación y contexto con evidencias; la generación es opcional y la hace por defecto el consumidor | Evita acoplar Glosa a un proveedor de modelos de lenguaje y mantiene el foco en el conocimiento documental. Pendiente de confirmar |
 
 ## 23. Glosario
 
@@ -1053,3 +1085,11 @@ A los usuarios y pequeñas empresas se les pide, sin obligación y sin que condi
 - **Traza:** el conjunto de entradas del registro que comparten un `correlation_id`, presentado paso a paso, de la petición al resultado.
 - **Huella de la plantilla:** resumen criptográfico de la plantilla ya resuelta; queda en el registro al arrancar para saber con qué configuración se trabajó.
 - **Actor del sistema:** el propio sistema (arranque, tareas internas); deja constancia en el registro pero no tiene ningún permiso.
+- **Autoridad:** el sistema que decide sobre una cosa (el documento original, la identidad, los permisos). Glosa solo es autoridad de lo que guarda en una colección de modo propio.
+- **Modo propio:** colección en la que Glosa guarda el contenido y gestiona identidad y permisos. Es lo implementado hoy.
+- **Modo gobernado:** colección en la que la autoridad es un sistema externo (ATLAS) y Glosa solo guarda derivados y referencias. Propuesto, no implementado.
+- **Índice derivado:** índice generado a partir del contenido original; se puede descartar y reconstruir, y nunca es fuente de verdad.
+- **Procedencia:** el origen de un dato: de qué documento y versión, de qué sistema, y cómo se derivó.
+- **Contexto autorizado:** la identidad y el alcance con los que alguien consulta, emitidos por el sistema de origen. Propuesto.
+- **Tombstone:** registro de que un documento fue borrado, que evita que un evento atrasado lo resucite.
+- **Falla cerrada:** si no se puede confirmar que algo está permitido, se trata como no permitido.

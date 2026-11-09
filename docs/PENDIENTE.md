@@ -1,6 +1,6 @@
 # Pendiente de implementar — Glosa
 
-> Última actualización: 2026-11-07 · Spec v0.4.5 · 289 tests (y los 90 de `core` otra vez contra SQLite)
+> Última actualización: 2026-11-08 · Spec v0.4.6 · 289 tests (y los 90 de `core` otra vez contra SQLite)
 
 **Cómo se mantiene:** al cerrar una tarea se marca con `[x]` y se anota en el registro de avances del final. Si aparece trabajo nuevo, se añade en su sección. Las cifras del resumen se recalculan en cada entrega.
 
@@ -18,6 +18,7 @@
 | Servidor MCP | **0 de 3** herramientas |
 | Paquetes sin código | `retrieval` (pospuesto a propósito, ADR 0034) |
 | Frontend | No iniciado |
+| Visión del ecosistema con ATLAS | **Documentada, sin integración** (ver [`ECOSISTEMA.md`](ECOSISTEMA.md), [`AUDITORIA.md`](AUDITORIA.md), [`INTEGRACION-ATLAS.md`](INTEGRACION-ATLAS.md), [`HOJA-DE-RUTA.md`](HOJA-DE-RUTA.md)) |
 
 ## 1. Core (fase 1) — casi cerrada
 
@@ -92,13 +93,27 @@
 
 ## 6. Documentación y legal
 
-- [ ] Completar los 34 ADRs: todos están como "Propuesta" con las secciones vacías
+- [ ] Completar los 39 ADRs: todos están como "Propuesta" con las secciones vacías
 - [ ] Diagramas: solo existe el de arquitectura general
 - [ ] `LICENSE`: titular legal y texto oficial de PolyForm Small Business
 - [ ] `LICENSE-COMERCIAL.md`: tramos y precios; revisión legal de la licencia y del CLA
 - [ ] Marca **Glosa** (OEPM), dominios y usuario de GitHub; enlaces de apoyo
 
-## 7. Más adelante (hoja de ruta)
+## 7. Ecosistema (ATLAS): trabajo que no depende de ATLAS
+
+La estrategia completa, con fases, dependencias y criterios de aceptación, está en [`HOJA-DE-RUTA.md`](HOJA-DE-RUTA.md); las 42 capacidades clasificadas, en [`AUDITORIA.md`](AUDITORIA.md). Primer tramo recomendado, por este orden:
+
+- [ ] **G-014** Volver a comprobar permisos al ejecutar un trabajo (hoy se ejecuta con los del momento de encolar: A-02)
+- [ ] **G-012** `DeleteDocument` y `HandleDelete` con *tombstone* local (A-13)
+- [ ] **G-010** Procedencia en el dominio: `SourceRef` en documento, versión, fragmento y resultado
+- [ ] **G-016** y **G-015** Catálogo de errores con códigos estables y límites de tiempo
+- [ ] **G-021** Script `eval` y conjuntos de preguntas (hoy faltan `eval.yaml` y `acme-legal/eval.yaml`)
+- [ ] **A-05** Implementar o marcar como reservados los campos de plantilla sin efecto (`metadata`, `retrieval.reranker`, `adapters.embedder`; `retrieval.strategy` es solo una etiqueta)
+- [ ] **A-06** Usar o eliminar `DocumentVersion.content_ref`
+
+**Bloqueado por ATLAS:** todo lo que dependa de la forma final de los contratos (matriz en [`INTEGRACION-ATLAS.md`](INTEGRACION-ATLAS.md)). No se ha podido consultar ATLAS ni sus issues.
+
+## 8. Más adelante (hoja de ruta)
 
 - [ ] `retrieval`: estrategias de búsqueda, cuando haya más de una (ADR 0034)
 - [ ] PDF, embeddings, búsqueda híbrida y comparador de estrategias
@@ -107,7 +122,11 @@
 
 ## Decisiones pendientes
 
-Con propuesta por defecto, pendiente de confirmar:
+Con propuesta, pendiente de confirmar:
+
+- **Autoridad por colección** (ADR 0035): modo propio y modo gobernado. Cambia el diseño del dominio; sin confirmarla no se empieza el modo gobernado
+- **Alcance del RAG** (ADR 0039): recuperación + contexto con evidencias; la generación, opcional y por defecto del consumidor
+- **Acceso a la Issue #1 de Glosa y a las issues de ATLAS #50, #52, #53 y #67**: no se han podido consultar; sin ellas no se puede cerrar la Issue #1 ni verificar los contratos
 
 - **Usuarios:** una API key personal por usuario, guardada con hash como los tokens, y una orden para crearlos. Hoy no hay puerto `UserRepository`; bloquea `ManageMembers` y la API
 
@@ -138,6 +157,7 @@ Decididas: el contenido de los archivos vive en SQLite (ADR 0027); `retrieval` s
 
 ## Registro de avances
 
+- **2026-11-08 (solo documentación):** visión del ecosistema con ATLAS, auditoría de 42 capacidades, matriz de 10 contratos con sus invariantes, hoja de ruta por fases y ADRs 0035 a 0039. **No cambia el código.** Hallazgo principal: un trabajo se ejecuta con los permisos del momento de encolar (A-02). La Issue #1 y las de ATLAS quedan sin verificar.
 - **2026-11-07:** `app` compone el sistema desde la plantilla; worker como proceso (`glosa_app worker`); `ViewTrace` y `explain`; `Database.close()` cierra todas las conexiones; arranque registrado con la huella de la plantilla. El recorrido subir → indexar → buscar → traza funciona sin HTTP. Spec v0.4.5. Detectado y corregido un nombre de test duplicado, con una comprobación automática.
 - **2026-11-06:** adaptadores de `storage` sobre SQLite y puerto `UnitOfWork`; escrituras relacionadas atómicas. La batería de `core` pasa también contra SQLite. Spec v0.4.4.
 - **2026-11-04:** `GetJob`, `ListJobs`, `CancelJob`, `QueryOperations` y `VerifyOperationLog`; adaptadores de `ingest`. Corregido un fallo de `SubmitDocument` con contenido ya cancelado. Spec v0.4.3.

@@ -38,3 +38,8 @@ Cada decisión relevante se documenta en un fichero numerado. Estados: *Propuest
 | [0032](0032-el-worker-es-un-bucle-sin-logica-de-negocio-reinte.md) | El worker es un bucle sin lógica de negocio: reintentos y `dead` viven en `core` | Propuesta |
 | [0033](0033-actor-y-canal-system-para-eventos-sin-persona-sin.md) | Actor y canal `system` para eventos sin persona, sin ningún permiso | Propuesta |
 | [0034](0034-el-paquete-retrieval-se-pospone-hasta-que-existan.md) | El paquete `retrieval` se pospone hasta que existan varias estrategias de búsqueda | Propuesta |
+| [0035](0035-autoridad-por-coleccion-modo-propio-o-modo-goberna.md) | Autoridad por colección: modo propio o modo gobernado por un sistema externo (ATLAS) | Propuesta |
+| [0036](0036-los-indices-son-derivados-y-reconstruibles.md) | Los índices son derivados y reconstruibles | Propuesta |
+| [0037](0037-la-integracion-con-atlas-se-hace-por-contratos-exp.md) | La integración con ATLAS se hace por contratos explícitos y no se implementa hasta que existan y estén verificados | Propuesta |
+| [0038](0038-en-modo-gobernado-la-autorizacion-se-vuelve-a-comp.md) | En modo gobernado la autorización se vuelve a comprobar al consultar y falla cerrada | Propuesta |
+| [0039](0039-rag-en-glosa-es-recuperacion-y-contexto-con-eviden.md) | RAG en Glosa es recuperación y contexto con evidencias; la generación es opcional y la hace por defecto el consumidor | Propuesta |

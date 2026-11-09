@@ -12,7 +12,8 @@ El proyecto está en fase de diseño con un núcleo ya implementado.
 
 | Pieza | Estado |
 |-------|--------|
-| Especificación (v0.4.5), ADRs, contrato OpenAPI | Hecho |
+| Especificación (v0.4.6), ADRs, contrato OpenAPI | Hecho |
+| Visión del ecosistema con ATLAS, auditoría, contratos y hoja de ruta | **Documentados**; la integración **no** está implementada ni verificada |
 | Núcleo: entidades, puertos, permisos, tokens, registro encadenado | Implementado, con tests |
 | Plantillas de cliente (carga, herencia, guardia de producción) | Implementado, con tests |
 | Dockerfile y docker-compose | Hechos |
@@ -56,12 +57,16 @@ Más detalles en [`backend/README.md`](backend/README.md).
 - Los LLM se conectan al **servidor MCP** con un token de colección. El token fija la colección y sus permisos (`read` por defecto).
 - Los permisos los decide **una sola pieza** (`core`), tanto para la API como para MCP.
 
-Todo el detalle está en [`docs/SPEC.md`](docs/SPEC.md).
+Todo el detalle está en [`docs/SPEC.md`](docs/SPEC.md). El índice de toda la documentación está en [`docs/README.md`](docs/README.md).
+
+## Glosa y ATLAS
+
+Glosa es un **motor de conocimiento documental**; ATLAS, el sistema de memoria y coordinación con el que debe poder colaborar, conserva la autoridad sobre los documentos originales, la identidad, los permisos y la auditoría. Son independientes y cada uno funciona por sí solo. **La integración con ATLAS está diseñada pero no implementada ni verificada.** Ver [`docs/ECOSISTEMA.md`](docs/ECOSISTEMA.md), [`docs/AUDITORIA.md`](docs/AUDITORIA.md), [`docs/INTEGRACION-ATLAS.md`](docs/INTEGRACION-ATLAS.md) y [`docs/HOJA-DE-RUTA.md`](docs/HOJA-DE-RUTA.md).
 
 ## Estructura
 
 ```
-docs/       especificación, ADRs, contrato OpenAPI, glosario, diagramas y licencias de dependencias
+docs/       especificación, ecosistema con ATLAS, auditoría, hoja de ruta, ADRs, contrato OpenAPI, glosario y diagramas
 backend/    el producto (ver backend/README.md)
 frontend/   cliente de la API, reemplazable (ver frontend/README.md)
 ```
