@@ -1,6 +1,6 @@
 # Glosa
 
-**Sube tus documentos y obtén un RAG consultable y un servidor MCP al que se conecta cualquier LLM, con permisos, cola de trabajos y trazabilidad completa.**
+**En desarrollo: núcleo documental con permisos, cola de trabajos, trazabilidad y búsqueda textual local. El RAG completo, la API HTTP y el servidor MCP son objetivos pendientes.**
 
 Glosa está pensado para dos cosas a la vez: **enseñar** cómo funcionan RAG y MCP viéndolos funcionar, y **convertirse en un servicio profesional** que se adapta a cada cliente con una plantilla, sin tocar código.
 
@@ -51,11 +51,11 @@ Más detalles en [`backend/README.md`](backend/README.md).
 
 ## Cómo funciona
 
-- Las **escrituras** (subir, modificar, borrar, reindexar) se **encolan** y las procesa un worker, en orden por colección y de forma idempotente.
+- Las **escrituras implementadas** (subir y modificar documentos) se **encolan** y las procesa un worker, en orden por colección y de forma idempotente. El borrado y la reindexación aún están pendientes.
 - Las **lecturas** (buscar, leer, listar) son síncronas.
 - Cada operación deja una entrada en un **registro de solo añadir**, encadenado con hashes, unido por un `correlation_id` de extremo a extremo.
-- Los LLM se conectan al **servidor MCP** con un token de colección. El token fija la colección y sus permisos (`read` por defecto).
-- Los permisos los decide **una sola pieza** (`core`), tanto para la API como para MCP.
+- Está previsto que los LLM se conecten mediante un **servidor MCP** con un token de colección, pero ese servidor **todavía no está implementado**. El diseño contempla permisos `read` por defecto.
+- Los permisos los decide **una sola pieza** (`core`). La futura API y el futuro servidor MCP deberán reutilizar esta misma autorización.
 
 Todo el detalle está en [`docs/SPEC.md`](docs/SPEC.md). El índice de toda la documentación está en [`docs/README.md`](docs/README.md).
 
@@ -100,7 +100,7 @@ Código disponible (*source-available*), **no** open source en sentido estricto.
 
 Si lo usas y puedes, ayuda a que siga adelante. Es voluntario y no condiciona la licencia.
 
-`<enlace de apoyo: GitHub Sponsors, Open Collective, Liberapay...>`
+Aún no se ha publicado un canal de aportaciones; no hay un enlace de apoyo operativo.
 
 ## Siguiente paso
 
