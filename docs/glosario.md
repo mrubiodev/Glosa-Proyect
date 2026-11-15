@@ -40,11 +40,14 @@
 - **Traza:** el conjunto de entradas del registro que comparten un `correlation_id`, presentado paso a paso, de la petición al resultado.
 - **Huella de la plantilla:** resumen criptográfico de la plantilla ya resuelta; queda en el registro al arrancar para saber con qué configuración se trabajó.
 - **Actor del sistema:** el propio sistema (arranque, tareas internas); deja constancia en el registro pero no tiene ningún permiso.
-- **Autoridad:** el sistema que decide sobre una cosa (el documento original, la identidad, los permisos). Glosa solo es autoridad de lo que guarda en una colección de modo propio.
-- **Modo propio:** colección en la que Glosa guarda el contenido y gestiona identidad y permisos. Es lo implementado hoy.
-- **Modo gobernado:** colección en la que la autoridad es un sistema externo (ATLAS) y Glosa solo guarda derivados y referencias. Propuesto, no implementado.
+- **Autoridad:** el sistema que decide sobre una cosa. Glosa es autoridad sobre lo que guarda (copias, versiones ingeridas, derivados, trabajos, operaciones) y sobre el acceso a su propia interfaz; el consumidor, sobre sus usuarios, sus recursos originales y su ACL.
+- **Modo propio:** colección en la que la política de acceso a los documentos la define Glosa, con sus usuarios y roles. Es lo implementado hoy.
+- **Modo gobernado:** colección en la que la política de acceso a nivel de documento la define el sistema consumidor. Glosa sigue aplicando sus propias barreras (credencial de integración de mínimo privilegio). Propuesto, no implementado.
 - **Índice derivado:** índice generado a partir del contenido original; se puede descartar y reconstruir, y nunca es fuente de verdad.
 - **Procedencia:** el origen de un dato: de qué documento y versión, de qué sistema, y cómo se derivó.
-- **Contexto autorizado:** la identidad y el alcance con los que alguien consulta, emitidos por el sistema de origen. Propuesto.
+- **Contexto de autorización delegado:** identidad y alcance con los que alguien consulta, emitidos por el consumidor. Solo se acepta si puede validarse de extremo a extremo. Propuesto.
 - **Tombstone:** registro de que un documento fue borrado, que evita que un evento atrasado lo resucite.
 - **Falla cerrada:** si no se puede confirmar que algo está permitido, se trata como no permitido.
+- **Consumidor:** sistema que usa Glosa como proveedor documental y conserva la autoridad sobre sus usuarios, sus recursos originales y su ACL.
+- **Candidato:** resultado de una búsqueda que el consumidor debe validar contra su propia ACL antes de usarlo; no es un hecho.
+- **Retirada efectiva:** una versión retirada o borrada deja de aparecer como vigente y se eliminan sus fragmentos.

@@ -1,6 +1,6 @@
 # Pendiente de implementar — Glosa
 
-> Última actualización: 2026-11-08 · Spec v0.4.6 · 289 tests (y los 90 de `core` otra vez contra SQLite)
+> Última actualización: 2026-11-08 · Spec v0.4.7 · 289 tests (y los 90 de `core` otra vez contra SQLite)
 
 **Cómo se mantiene:** al cerrar una tarea se marca con `[x]` y se anota en el registro de avances del final. Si aparece trabajo nuevo, se añade en su sección. Las cifras del resumen se recalculan en cada entrega.
 
@@ -18,7 +18,8 @@
 | Servidor MCP | **0 de 3** herramientas |
 | Paquetes sin código | `retrieval` (pospuesto a propósito, ADR 0034) |
 | Frontend | No iniciado |
-| Visión del ecosistema con ATLAS | **Documentada, sin integración** (ver [`ECOSISTEMA.md`](ECOSISTEMA.md), [`AUDITORIA.md`](AUDITORIA.md), [`INTEGRACION-ATLAS.md`](INTEGRACION-ATLAS.md), [`HOJA-DE-RUTA.md`](HOJA-DE-RUTA.md)) |
+| Visión del ecosistema con ATLAS | **Documentada, sin integración.** Lo declarado sobre ATLAS está **sin verificar** (su repositorio no es accesible desde este entorno) |
+| **Issue #1 de Glosa** | **Abierta: no se puede cerrar** (2 criterios cumplidos, 6 parciales, 3 no cumplidos). Ver [`ISSUE-1-ACEPTACION.md`](ISSUE-1-ACEPTACION.md) |
 
 ## 1. Core (fase 1) — casi cerrada
 
@@ -103,7 +104,7 @@
 
 La estrategia completa, con fases, dependencias y criterios de aceptación, está en [`HOJA-DE-RUTA.md`](HOJA-DE-RUTA.md); las 42 capacidades clasificadas, en [`AUDITORIA.md`](AUDITORIA.md). Primer tramo recomendado, por este orden:
 
-- [ ] **G-014** Volver a comprobar permisos al ejecutar un trabajo (hoy se ejecuta con los del momento de encolar: A-02)
+- [ ] **G-014** Volver a comprobar permisos al ejecutar un trabajo (A-02). [Especificación lista](issues/G-014-revalidar-permisos-al-ejecutar-un-trabajo.md). **Ojo:** para un token hay que releer su estado, porque el trabajo guarda una copia de sus scopes; y la comprobación definitiva va dentro de la transacción de escritura
 - [ ] **G-012** `DeleteDocument` y `HandleDelete` con *tombstone* local (A-13)
 - [ ] **G-010** Procedencia en el dominio: `SourceRef` en documento, versión, fragmento y resultado
 - [ ] **G-016** y **G-015** Catálogo de errores con códigos estables y límites de tiempo
@@ -124,9 +125,9 @@ La estrategia completa, con fases, dependencias y criterios de aceptación, est�
 
 Con propuesta, pendiente de confirmar:
 
-- **Autoridad por colección** (ADR 0035): modo propio y modo gobernado. Cambia el diseño del dominio; sin confirmarla no se empieza el modo gobernado
-- **Alcance del RAG** (ADR 0039): recuperación + contexto con evidencias; la generación, opcional y por defecto del consumidor
-- **Acceso a la Issue #1 de Glosa y a las issues de ATLAS #50, #52, #53 y #67**: no se han podido consultar; sin ellas no se puede cerrar la Issue #1 ni verificar los contratos
+- **Autoridad por colección** (ADR 0035, completo): cambia el diseño del dominio. Revisión del 2026-11-09: aceptar **con doble control**. Pendiente de tu aprobación expresa
+- **Alcance del RAG** (ADR 0039, completo): recuperación y contexto con evidencias; generación opcional y por defecto del consumidor. Pendiente de tu aprobación expresa
+- **Acceso a ATLAS:** la Issue #1 de Glosa ya está leída, pero el repositorio de ATLAS **no es accesible** desde este entorno. Hace falta su documentación para verificar lo declarado en el informe externo
 
 - **Usuarios:** una API key personal por usuario, guardada con hash como los tokens, y una orden para crearlos. Hoy no hay puerto `UserRepository`; bloquea `ManageMembers` y la API
 
@@ -157,6 +158,7 @@ Decididas: el contenido de los archivos vive en SQLite (ADR 0027); `retrieval` s
 
 ## Registro de avances
 
+- **2026-11-09 (solo documentación):** leída la Issue #1 y escrita su matriz de aceptación: **no se puede cerrar**. Corregidas seis propuestas anteriores que iban en dirección contraria a la issue (producto concreto, modelo de autoridad, M3 y M4, sincronización por tirón, re-comprobación contra el origen, matriz de capacidades). ADR 0035 a 0039 completos. Especificación de G-014 con el hallazgo de los tokens. Spec v0.4.7.
 - **2026-11-08 (solo documentación):** visión del ecosistema con ATLAS, auditoría de 42 capacidades, matriz de 10 contratos con sus invariantes, hoja de ruta por fases y ADRs 0035 a 0039. **No cambia el código.** Hallazgo principal: un trabajo se ejecuta con los permisos del momento de encolar (A-02). La Issue #1 y las de ATLAS quedan sin verificar.
 - **2026-11-07:** `app` compone el sistema desde la plantilla; worker como proceso (`glosa_app worker`); `ViewTrace` y `explain`; `Database.close()` cierra todas las conexiones; arranque registrado con la huella de la plantilla. El recorrido subir → indexar → buscar → traza funciona sin HTTP. Spec v0.4.5. Detectado y corregido un nombre de test duplicado, con una comprobación automática.
 - **2026-11-06:** adaptadores de `storage` sobre SQLite y puerto `UnitOfWork`; escrituras relacionadas atómicas. La batería de `core` pasa también contra SQLite. Spec v0.4.4.

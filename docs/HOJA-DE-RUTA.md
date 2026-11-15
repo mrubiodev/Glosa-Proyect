@@ -29,9 +29,22 @@
 
 | | Issue | Depende de | Criterio de aceptación |
 |---|---|---|---|
-| **G-001** | Contrastar la Issue #1 con la auditoría | Acceso al texto de la issue. **Bloqueada** | Cada criterio de la issue tiene evidencia (test o fichero) y clasificación; se cierra solo si todos la tienen |
-| **G-002** | Actualizar la matriz de contratos tras revisar ATLAS #50, #52, #53 y #67 | Acceso a esas issues. **Bloqueada** | Cada fila de la matriz pasa de "sin verificar" a un estado con evidencia; las preguntas del apartado 7 de `INTEGRACION-ATLAS.md` quedan respondidas |
-| **G-003** | Decidir la autoridad por colección (ADR 0035) y el alcance del RAG (ADR 0039) | Decisión del propietario | Los dos ADR pasan de "Propuesta" a "Aceptada" o se sustituyen por otro |
+| **G-001** | Contrastar la Issue #1 con la auditoría | — | **Hecha** ([`ISSUE-1-ACEPTACION.md`](ISSUE-1-ACEPTACION.md)): 11 criterios, 2 cumplidos, 6 parciales y 3 no cumplidos. La issue sigue abierta hasta completar G-100 a G-105 |
+| **G-002** | Contrastar con la documentación real de ATLAS lo declarado en el informe externo | Acceso a esa documentación. **Parcialmente bloqueada** | Lo declarado está en [`INTEGRACION-ATLAS.md`](INTEGRACION-ATLAS.md) como **no verificado** (el repositorio de ATLAS no es accesible desde este entorno); cada afirmación pasa a verificada o se corrige |
+| **G-003** | Decidir la autoridad por colección (ADR 0035) y el alcance del RAG (ADR 0039) | Decisión del propietario | Los dos ADR, ya completos, pasan a «Aceptada» o se sustituyen. **Recomendación de la revisión:** aceptar con condiciones (doble control; recuperación separada de generación) |
+
+## Fase 0b. Issue #1: perfil neutral de interoperabilidad (sin ATLAS)
+
+Es el trabajo que la Issue #1 pide de verdad. Detalle en [`ISSUE-1-ACEPTACION.md`](ISSUE-1-ACEPTACION.md).
+
+| | Issue | Depende de | Criterio de aceptación |
+|---|---|---|---|
+| **G-100** | Arquitectura de interoperabilidad **neutral** y matriz de responsabilidades Glosa/consumidor | G-003 | Sin nombrar ningún producto concreto; reparto coherente con el ADR 0035 |
+| **G-101** | **Perfil público de proveedor** versionado: capacidades, consulta, lectura, sincronización, errores, límites y procedencia | G-010, G-016, G-100 | No contradice la SPEC ni el OpenAPI; versionado y con descubrimiento de capacidades |
+| **G-102** | **Diagramas de secuencia** de consulta, autorización, sincronización e invalidación | G-101 | Cada diagrama se corresponde con una operación del perfil |
+| **G-103** | ADR de contratos y seguridad, completos y aceptados | G-003 | Los ADR 0035 a 0039 en estado «Aceptada» o sustituidos |
+| **G-104** | Matriz de capacidades en **cuatro niveles**, incluida «validada en despliegue» | — | Cada capacidad con su nivel y su evidencia |
+| **G-105** | Informe final de la Issue #1 y creación de las issues de implementación | G-100 a G-104 | Archivos, decisiones, dudas, pruebas de documentación y lo no implementado |
 
 ## Fase 1. Núcleo documental (sin ATLAS)
 
@@ -43,7 +56,7 @@ Cierra las brechas de la auditoría que no dependen de nadie. Orden recomendado:
 | **G-011** | **Metadatos del documento:** que `Document.metadata` y los `metadata` de la plantilla funcionen (subida, validación y consulta) | G-010 | Se pueden declarar, validar y leer; una plantilla con un campo inexistente falla al arrancar |
 | **G-012** | **`DeleteDocument` y `HandleDelete`** con *tombstone* local | — | Borrar retira los fragmentos del índice y el documento deja de verse; un trabajo de alta pendiente no lo resucita; queda en el registro; prueba obligatoria nueva |
 | **G-013** | **Reindexación y `DerivationInfo`:** `ReindexDocument`, `HandleReindex` y registro de con qué extractor, chunker y versión se generó cada derivado | G-010 | Reindexar reemplaza los fragmentos de una versión sin duplicar ni dejar huérfanos; se puede reindexar solo lo generado con una versión antigua; se resuelve el campo `content_ref` (usarlo o quitarlo) |
-| **G-014** | **Revalidar permisos al ejecutar un trabajo** | — | Si el actor pierde el permiso entre encolar y ejecutar, el trabajo no escribe nada y queda `dead` con razón; prueba nueva contra los dobles y contra SQLite |
+| **G-014** | **Revalidar permisos al ejecutar un trabajo** ([especificación](issues/G-014-revalidar-permisos-al-ejecutar-un-trabajo.md)) | — | Si el actor pierde el permiso entre encolar y ejecutar, el trabajo no escribe nada y queda `dead` con razón; **para un token se relee su estado** (revocado, caducado), porque el actor del trabajo lleva una copia de sus scopes; la comprobación definitiva ocurre **dentro de la transacción de escritura** (sin TOCTOU); prueba obligatoria 15 nueva, en memoria y contra SQLite |
 | **G-015** | **Límites de tiempo** en extracción, indexado y búsqueda, configurables en la plantilla | — | Un documento patológico no bloquea a un worker; el fallo es un error clasificado |
 | **G-016** | **Catálogo de errores con códigos estables** y su correspondencia con los errores del dominio | — | Cada error del dominio tiene un código estable y documentado; hay una prueba que impide añadir un error sin código |
 | **G-017** | **Extractores:** PDF (texto), tablas Markdown, codificaciones distintas de UTF-8 y validación del tipo declarado | — | Cada formato con pruebas, incluido el error de extracción y el contenido parcialmente procesable |
@@ -88,11 +101,11 @@ El **diseño** y los puertos pueden hacerse ya; la **forma final** de los contra
 
 | | Issue | Depende de | Criterio de aceptación |
 |---|---|---|---|
-| **G-050** | **Puertos `DocumentSource`, `AuthorizationProvider` y `ChangeFeed`**, con dobles **etiquetados como tales** y pruebas de contrato | G-010 | Los dobles tienen nombre y documentación que dicen que no son ATLAS; ningún endpoint ni operación inventados |
-| **G-051** | **Modo gobernado:** `Collection.origin`, sin usuarios, roles ni tokens locales (M3), y el contenido original como derivado retirable | G-050, G-003 | El código común no conoce el modo (M5); una colección gobernada no puede crear permisos locales; la prueba obligatoria 1 se repite en ambos modos |
-| **G-052** | **Contexto autorizado** y su verificación, con caducidad y **fallo cerrado** | G-050 | Un contexto caducado, de otro emisor o manipulado se rechaza; si no se puede verificar, no se devuelve nada (I2) |
-| **G-053** | **Re-comprobación al consultar** (capa 1 de 5.6) | G-050, G-052 | Una revocación entre dos consultas surte efecto; con el origen inalcanzable, la consulta falla cerrada |
-| **G-054** | **Procesador de cambios** idempotente, con cursor transaccional, *tombstones* y reconciliación | G-012, G-050 | Repetir un evento no cambia nada (I5); caída entre aplicar y guardar el cursor no pierde ni duplica; un evento atrasado no resucita un borrado |
+| **G-050** | **Entradas públicas de sincronización de Glosa (K4):** alta o actualización de versión, retirada, borrado y reindexación, con *namespace*, hash e idempotencia | G-010, G-012, G-013, G-101 | Idempotentes; una entrada atrasada no resucita un borrado; hay un inventario para reconciliar; ningún endpoint ni operación ajenos inventados |
+| **G-051** | **Modo gobernado:** `Collection.origin` y credenciales de integración acotadas (**doble control**) | G-050, G-003 | El código común no conoce el modo (M5); la autorización efectiva es la intersección; la prueba obligatoria 1 se repite en ambos modos |
+| **G-052** | **Contexto de autorización delegado** (opcional), solo si puede validarse de extremo a extremo | G-050 | Un contexto caducado, de otro emisor o manipulado se rechaza; un identificador de colección o un filtro nunca se toman como prueba (Issue #1); falla cerrada |
+| **G-053** | **Retirada efectiva** de versiones vigentes (garantía de Glosa, ADR 0038) | G-012, G-050 | Una versión retirada deja de ser vigente al instante y sus fragmentos desaparecen; el *tombstone* impide resucitarla |
+| **G-054** | **Inventario para reconciliar:** referencias, versiones, huellas y estados que tiene Glosa | G-010, G-050 | El consumidor puede detectar lo que sobra, lo que falta y lo desactualizado; se prueba introduciendo una diferencia |
 | **G-055** | **Ventana de obsolescencia** configurable y medible | G-053, G-054, G-019 | El límite se declara en la plantilla y se muestra en la observabilidad (I7) |
 
 ## Fase 6. Integración real (bloqueada)

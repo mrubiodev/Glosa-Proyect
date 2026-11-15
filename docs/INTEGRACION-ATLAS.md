@@ -1,155 +1,90 @@
 # Integración con ATLAS: contratos y problemas por resolver
 
-> **Qué es y qué no es este documento.** Describe lo que Glosa **necesita** de ATLAS y lo que **propone**. **No describe contratos que existan.** No se ha consultado ATLAS: todo lo que figura en la columna "ATLAS" está **sin verificar**. No hay endpoints inventados, ni nombres de operaciones supuestos, ni autorización simulada con un booleano.
+> **Alcance.** Documento **específico de ATLAS**; fuera del perfil neutral de la [Issue #1](https://github.com/mrubiodev/Glosa-Proyect/issues/1) ([matriz](ISSUE-1-ACEPTACION.md)). Describe lo que Glosa **ofrece y necesita** y lo que **propone**. **No describe contratos que existan:** no hay endpoints inventados, ni operaciones supuestas, ni autorización simulada con un booleano.
+>
+> **Revisado el 2026-11-09** tras leer la Issue #1 y recibir un informe externo sobre ATLAS. El contrato por defecto lo **posee Glosa** y el consumidor envía sus cambios; la validación documental de los candidatos es del consumidor.
 
-## 1. Lo que no se ha podido verificar
+## 1. Qué se ha verificado y qué no
 
-El encargo menciona el trabajo en curso de ATLAS (las issues #50, #52, #53 y #67: inventario de interfaces, observabilidad y versiones, integración con Core real y arquitectura de proveedores externos) y la Issue #1 de Glosa. **Ninguna de esas issues se ha podido consultar desde este entorno**, así que:
+| Fuente | Estado |
+|---|---|
+| Issue #1 de Glosa | **Leída directamente** (repositorio público) |
+| Repositorio de ATLAS (issues #50, #52, #53, #67 y su documentación) | **No accesible desde este entorno** (responde *404*: privado). **No verificado por mí** |
+| Informe externo sobre ATLAS (otra IA, 2026-11-09) | Afirmaciones sobre ATLAS recogidas en el apartado 2 como **declaradas, no verificadas** |
 
-- No se afirma que ATLAS tenga, o no tenga, ninguno de los contratos de la tabla.
-- La Issue #1 de Glosa **no se da por cerrada ni por incumplida**: queda pendiente de contrastar (ver [`AUDITORIA.md`](AUDITORIA.md), apartado 3).
-- Para completar este documento hace falta el contenido de esas issues o de la documentación de contratos de ATLAS.
+Una issue abierta no significa que su trabajo no esté hecho, ni una cerrada que esté aceptado: eso exige revisar las evidencias.
 
-Las preguntas concretas que hay que responder con ellas están en el apartado 7.
+## 2. Lo declarado sobre ATLAS (no verificado por mí)
 
-## 2. Matriz de contratos
+- **#67 (cerrada)** fija la dirección: ATLAS es autoridad de identidad, ACL, recursos originales, versiones y auditoría; Glosa puede ser un **proveedor externo de recuperación documental**; sus índices son **derivados**; ATLAS conserva FTS5, *Vault* y grafo; los resultados son **evidencias o candidatos**, no hechos incorporados a la memoria; los proveedores son opcionales y sustituibles.
+- **Tres bloqueos declarados en #67:** (1) no hay un protocolo completo para calcular el **ámbito autorizado antes de consultar** al proveedor; (2) el sistema de eventos **no garantiza** todas las revocaciones, borrados e invalidaciones; (3) no hay mecanismo completo de **sincronización, reconciliación y recuperación de cursores**. Define la dirección, pero **no autoriza todavía una integración funcional segura**.
+- **#50:** inventario de interfaces y capacidades, documental. **#52:** mejoras de observabilidad y versiones, con pruebas locales. **#53:** integración con el *Core* real, **no acreditada**.
+- **Hallazgo del observador:** `events_poll` no sirve como observación automática de solo lectura, porque puede **crear de forma persistente un consumidor** en el *Core*; la corrección publicada lo bloquea. Se distingue *PASS contractual/local*, *integración HTTP real: no probada* e *identidad independiente del Core: sin verificar*.
 
-**Leyenda de estados.** *Existe*: está definido y publicado. *Propuesto*: hay un diseño, sin implementar. *Implementado*. *Verificado*: probado contra la otra parte. *Pendiente*: ni siquiera diseñado. *Sin verificar*: no se ha consultado.
+**Implicación para Glosa** (si se confirma): la sincronización **no puede depender de un registro de eventos sin garantías**, y que ATLAS calcule el ámbito antes de consultar y trate los resultados como candidatos coincide con que [la validación documental sea del consumidor](adr/0038-glosa-no-da-por-autorizado-un-resultado-por-habers.md).
 
-| | Contrato (capacidad que Glosa necesita) | Sentido | Lado Glosa | Lado ATLAS |
+## 3. Matriz de contratos
+
+*Posee:* quién define y mantiene el contrato. *Lado ATLAS:* **lo declarado, sin verificar**. Ninguno está implementado ni verificado en ambas partes.
+
+| | Contrato | Posee | Lado Glosa | Lado ATLAS (declarado) |
 |---|---|---|---|---|
-| **C1** | Referencia documental estable y versión de un documento | ATLAS → Glosa | Pendiente (`SourceRef` propuesto, no implementado) | Sin verificar |
-| **C2** | Obtener el contenido autorizado de una versión concreta | Glosa → ATLAS | Pendiente (puerto `DocumentSource` propuesto) | Sin verificar |
-| **C3** | Identidad y contexto de autorización del consultante, verificable y con caducidad | ATLAS → Glosa | Pendiente (`AuthorizedContext` propuesto) | Sin verificar |
-| **C4** | Decisión de autorización sobre un conjunto de referencias, por lotes | Glosa → ATLAS | Pendiente (puerto `AuthorizationProvider` propuesto) | Sin verificar |
-| **C5** | Cambios: altas, actualizaciones, borrados, cambios de permisos y revocaciones, con cursor | ATLAS → Glosa | Pendiente (puerto `ChangeFeed` propuesto) | Sin verificar |
-| **C6** | Resultado de una consulta con procedencia | Glosa → consumidor | **Parcial**: el resultado ya lleva fragmento, documento, versión, puntuación y estrategia; faltan origen, limitaciones e información de recuperación | No aplica |
-| **C7** | Evidencias de auditoría de lo que hizo Glosa | Glosa → ATLAS | **Parcial**: existe el registro de operaciones con cadena de hashes; no hay exportación | Sin verificar |
-| **C8** | Autenticación entre sistemas | Ambos | Pendiente | Sin verificar |
-| **C9** | Versionado de contratos y descubrimiento de capacidades | Ambos | **Parcial**: OpenAPI con `/v1` previsto; sin contrato de MCP ni de intercambio | Sin verificar |
-| **C10** | Estado y salud de los componentes | Ambos | Pendiente (no hay *health* ni métricas) | Sin verificar |
+| **K1** | Versión de contrato y descubrimiento de capacidades | Glosa | **Parcial:** `/v1` previsto; sin descubrimiento ni contrato MCP | #52 declara mejoras de observabilidad y versiones |
+| **K2** | Consulta: procedencia, puntuación, estrategia, límites, errores, respuestas parciales | Glosa | **Parcial:** documento y versión locales, puntuación y estrategia; faltan origen, hash, ubicación y correlación | Trata los resultados como candidatos |
+| **K3** | Lectura de un documento y de una versión | Glosa | **Parcial:** `ReadDocument` en el núcleo; sin API ni MCP | — |
+| **K4** | **Sincronización:** alta o actualización de versión, retirada, borrado y reindexación, con *namespace*, identificador, versión, hash e idempotencia | Glosa | **Pendiente** (no existen retirada, borrado ni reindexación) | Sin mecanismo completo de sincronización ni cursores (bloqueo 3) |
+| **K5** | Credenciales de integración: mínimo privilegio, revocables, acotadas | Glosa | **Parcial:** tokens por colección con *scopes*; falta la clase de operación y el modo gobernado | Sin verificar |
+| **K6** | Ámbito autorizado o contexto delegado, **solo si validable de extremo a extremo** (opcional) | Consumidor emite, Glosa valida | **Pendiente** | Sin protocolo completo para calcular el ámbito (bloqueo 1) |
+| **K7** | Validación de los candidatos contra la ACL | **Consumidor** | No aplica: Glosa aporta la procedencia | Dirección declarada en #67 |
+| **K8** | Correlación y evidencias de lo que hizo Glosa | Glosa | **Parcial:** registro encadenado y trazas; el `correlation_id` no viaja en el resultado | Sin verificar |
+| **K9** | Estado y salud de los componentes | Glosa | **Pendiente:** sin *health* ni métricas | #52 declara observabilidad |
 
-Ninguno está *implementado* ni *verificado* por ninguna de las dos partes. Esta matriz se actualiza cuando se consulte ATLAS; cada cambio de estado exige evidencia.
-
-## 3. Contenido conceptual de cada contrato
-
-Son **requisitos mínimos de información**, no formatos ni operaciones. Los nombres de campo son provisionales.
-
-- **C1, referencia documental.** Sistema de origen; referencia del documento, opaca y estable en el tiempo; referencia de versión (inmutable: una versión nunca cambia de contenido); tipo de contenido; título; metadatos; y, si es posible, una huella del contenido para comprobar lo recibido.
-- **C2, contenido.** Dada una referencia y una versión, el contenido **solo si el contexto sigue autorizado**; si no, un error clasificable (no autorizado, no existe, borrado).
-- **C3, contexto autorizado.** Quién consulta, quién lo emitió, hasta cuándo es válido y a qué alcance se refiere. Debe poder verificarse sin confiar en quien lo presenta.
-- **C4, decisión por lotes.** Para varias referencias, cuáles siguen autorizadas para ese contexto. Debe poder responder "no sé" y Glosa lo tratará como "no" (ver invariante I2).
-- **C5, cambios.** Eventos ordenados por documento, con un cursor para reanudar, e identificador de evento para detectar repetidos. Un borrado y una revocación son eventos de primera clase.
-- **C6, resultado.** Fragmentos con puntuación, referencia al documento y su versión de origen, procedencia, cómo se recuperaron (estrategia, modelo, versión del índice) y las limitaciones relevantes (por ejemplo, "resultados incompletos por autorización no confirmada").
-- **C7, evidencias.** Qué operación, quién, cuándo, sobre qué referencia, con qué resultado, de forma que ATLAS pueda incorporarlo a su auditoría sin fiarse del texto: con el encadenado de hashes ya existente.
-
-## 4. Invariantes que debe cumplir cualquier diseño
+## 4. Invariantes
 
 | | Invariante |
 |---|---|
-| **I1** | En una colección gobernada, **nunca** se devuelve contenido sin una decisión de autorización **vigente** del sistema de origen. Haber estado autorizado cuando se indexó no basta |
-| **I2** | **Falla cerrada:** si no se puede confirmar la autorización, no se devuelve el contenido |
-| **I3** | Todo fragmento servido referencia sistema de origen, documento y versión |
-| **I4** | Un derivado solo se reconstruye volviendo al origen, y solo si el origen sigue autorizando el contenido |
-| **I5** | Aplicar dos veces el mismo evento deja el mismo estado (idempotencia) |
-| **I6** | Los eventos de un mismo documento se aplican en orden, o se detecta el hueco y se reconcilia |
-| **I7** | La obsolescencia posible tiene un **límite explícito y medible** (cuánto puede tardar una revocación en surtir efecto) |
+| **I1** | En una colección gobernada, un resultado **no se trata como autorizado** por haberlo estado al indexarse. La validación documental es del consumidor; Glosa garantiza retirada efectiva, aislamiento por colección y sus credenciales |
+| **I2** | **Falla cerrada:** si Glosa no puede validar la credencial o el alcance, no sirve nada |
+| **I3** | Todo fragmento servido referencia *namespace* y documento de origen, y versión |
+| **I4** | Un derivado solo se reconstruye volviendo al contenido del origen, mientras siga disponible y autorizado |
+| **I5** | Aplicar dos veces la misma entrada de sincronización deja el mismo estado |
+| **I6** | Las entradas de un documento se aplican en orden por versión, o se detecta el hueco y se reconcilia |
+| **I7** | La obsolescencia posible tiene un **límite explícito y medible** |
 
 ## 5. Problemas por resolver
 
-Para cada uno: qué puede salir mal, qué exige a Glosa, opciones, recomendación provisional y qué hay que probar. Ninguna recomendación es una decisión: todas dependen de lo que ATLAS ofrezca de verdad.
+Ninguna recomendación es una decisión: dependen de lo que el consumidor ofrezca de verdad.
 
-### 5.1 Identidad estable
-- **Riesgo:** que la misma persona o agente aparezca con identificadores distintos, o que dos distintos compartan uno, y los registros de auditoría dejen de ser fiables.
-- **Exige:** tratar el identificador de ATLAS como opaco y estable; no derivarlo ni normalizarlo.
-- **Pruebas:** el mismo sujeto da el mismo `actor` en el registro en todas las operaciones.
+- **Identidad estable.** Riesgo: la misma persona con identificadores distintos. Exige tratar el identificador del consumidor como opaco y estable. Prueba: mismo sujeto, mismo actor en toda operación.
+- **Autenticación entre sistemas.** Riesgo: suplantar al consumidor para inyectar contenido. Provisional: credenciales de integración **de Glosa**, de mínimo privilegio, con rotación y revocables; nunca un secreto en una plantilla. Prueba: rechazo de credenciales caducadas, revocadas y manipuladas.
+- **Transporte.** Provisional: petición y respuesta sobre un contrato versionado de Glosa; el consumidor decide si envía al instante o por lotes. Exige límites y *timeouts* (hoy no existen).
+- **Versionado de contratos.** Versión explícita, descubrimiento de capacidades y fallo claro ante una versión no soportada. Prueba: contrato contra la versión actual y la anterior.
+- **Procedencia.** `SourceRef` en documento, versión, fragmento y resultado, y `DerivationInfo`. Prueba: de cualquier resultado se llega al documento y la versión de origen; un derivado sin procedencia se rechaza.
+- **Revocaciones y cambios de permisos** (el riesgo más grave: un índice sirviendo lo no autorizado). Reparto según el [ADR 0038](adr/0038-glosa-no-da-por-autorizado-un-resultado-por-habers.md): el **consumidor** conserva la ACL y valida los candidatos (puede enviar un ámbito autorizado antes de consultar, K6); **Glosa** garantiza retirada efectiva, aislamiento, credenciales revocables y falla cerrada. Dos patrones para el ámbito: (1) el consumidor lo calcula y lo envía, que es la dirección declarada en #67 y exige que Glosa lo **valide de extremo a extremo**, porque la Issue #1 prohíbe aceptar como prueba un identificador de colección, un filtro o un claim arbitrario; (2) el consumidor valida después los candidatos. Descartado como base: que Glosa pregunte al origen por cada resultado o guarde la ACL. Pruebas: revocar entre dos consultas; ámbito manipulado o caducado; consumidor inalcanzable.
+- **Borrados y *tombstones*.** Un documento borrado no debe seguir vivo ni resucitar con una entrada atrasada. Glosa conserva un *tombstone* y elimina los fragmentos. Pendiente previo: no existe `DeleteDocument`. Pruebas: borrar y luego recibir un alta antigua; borrar durante una ingesta.
+- **Sincronización y cursores.** Si el consumidor obtiene sus cambios de un registro de eventos, **el cursor es suyo**; Glosa ofrece operaciones **idempotentes** con identificador de operación. Pruebas: repetir una entrada; entradas desordenadas por versión.
+- **Reconciliación.** Glosa puede **entregar un inventario** (referencias, versiones, huellas, estados) para que el consumidor lo compare con el suyo; lo que sobra se retira y lo que falta se reenvía. Prueba: introducir una diferencia a propósito.
+- **Reindexación** ([ADR 0036](adr/0036-los-indices-son-derivados-y-reconstruibles.md)). Reconstruir desde el contenido, por versión de derivado, sin mezclar índices incompatibles; un índice se activa cuando está completo. Pruebas: reindexar con una consulta en curso o con un documento retirado entre medias.
+- **Duplicados.** La identidad es el par *namespace* e identificador de origen, no el contenido; misma referencia y versión es idempotente.
+- **Fallos parciales.** Lo que ya hace el worker (atomicidad por documento, reintentos, fallo definitivo con razón), más no servir un documento hasta que esté completo.
+- **Consistencia eventual.** Declarar y medir la ventana de obsolescencia. Nunca puede significar servir lo retirado: la retirada efectiva es inmediata en Glosa.
+- **Recuperación tras interrupciones.** Gran parte **ya existe y está probada** (trabajos con *lease*, ingestas idempotentes, fragmentos con identificador determinista, atomicidad). Lo nuevo son las entradas de sincronización idempotentes y la reconciliación.
 
-### 5.2 Autenticación entre sistemas
-- **Riesgo:** que alguien se haga pasar por ATLAS (para inyectar documentos o contexto) o por Glosa.
-- **Opciones:** secreto compartido con rotación; autenticación mutua por certificados; credenciales de corta duración emitidas por ATLAS.
-- **Recomendación provisional:** credenciales de corta duración y verificables, con rotación; nunca un secreto en una plantilla (la guardia de producción ya lo impide).
-- **Pruebas:** rechazo de credenciales caducadas, de otro emisor y manipuladas.
+## 6. Cómo se prueba sin el consumidor
 
-### 5.3 Transporte
-- **Opciones:** HTTP con contratos versionados; cola de mensajes; ambos (consulta síncrona y cambios asíncronos).
-- **Recomendación provisional:** consulta e interrogación por petición/respuesta; cambios mediante un registro de eventos con cursor. Decidir cuando se conozca lo que ATLAS ofrece.
-- **Exige:** límites y *timeouts* en toda llamada saliente (hoy no existen en Glosa).
-
-### 5.4 Versionado de contratos
-- **Riesgo:** que un cambio en ATLAS rompa a Glosa sin avisar, o al revés.
-- **Exige:** versión explícita en cada contrato, descubrimiento de capacidades y fallo claro ante una versión no soportada. No se interpretan campos desconocidos como si fueran los conocidos.
-- **Pruebas:** pruebas de contrato contra la versión actual y la anterior.
-
-### 5.5 Procedencia
-- **Exige:** `SourceRef` en documento, versión, fragmento y resultado (C1, C6); registrar con qué extractor, chunker y modelo se derivó cada fragmento (`DerivationInfo`).
-- **Pruebas:** de cualquier resultado se llega al documento y la versión de origen; un derivado sin procedencia se rechaza al indexar.
-
-### 5.6 Revocaciones y cambios de permisos
-- **Riesgo (el más grave):** un índice derivado sigue sirviendo información que ya no está autorizada.
-- **Defensa en dos capas, propuesta:**
-  1. **Al consultar:** Glosa recupera más candidatos de los pedidos, pregunta al origen (C4) por los documentos distintos que aparecen y descarta los no autorizados. Puede guardar las decisiones en una caché de corta duración y acotada. Falla cerrada (I2).
-  2. **Propagación:** el registro de cambios (C5) retira derivados cuando hay revocación o borrado, de modo que la capa 1 no sea la única defensa.
-- **Alternativa descartada por ahora:** guardar en Glosa una copia de las ACL para filtrar antes de buscar. Duplica la autoridad de permisos (R4) y queda obsoleta en cuanto cambian.
-- **Dos límites medibles (I7):** la vida de la caché de decisiones y el retraso del registro de cambios. Se proponen como configuración de la plantilla.
-- **Pruebas:** revocar entre dos consultas; revocar con la caché caliente; ATLAS inalcanzable (debe fallar cerrado); revocación durante una reindexación.
-
-### 5.7 Borrados y *tombstones*
-- **Riesgo:** un documento borrado en el origen sigue vivo en el índice, o reaparece al reindexar un evento antiguo.
-- **Exige:** el borrado es un evento con identificador; Glosa conserva un *tombstone* (referencia + versión + fecha) para que un evento atrasado no resucite el documento; el derivado desaparece, incluidos los fragmentos.
-- **Pendiente previo en Glosa:** hoy no existe `DeleteDocument` (solo el puerto `mark_deleted`).
-- **Pruebas:** borrar y luego recibir un evento de alta antiguo; borrar durante una ingesta en curso.
-
-### 5.8 Sincronización y cursores
-- **Exige:** consumir el registro de cambios con un cursor que Glosa guarda **después** de aplicar el cambio, en la misma transacción; así, tras una caída, se reanuda sin saltarse nada. Repetir lo ya aplicado es seguro por idempotencia (I5).
-- **Pruebas:** caída entre aplicar y guardar el cursor; cursor inválido o caducado (debe provocar reconciliación, no ignorarse).
-
-### 5.9 Reconciliación
-- **Riesgo:** que el registro de cambios pierda eventos o que ambos sistemas deriven.
-- **Exige:** una comparación periódica y barata (por ejemplo, por huellas de las referencias y versiones que Glosa tiene frente a las que el origen autoriza) que detecte lo que sobra, lo que falta y lo desactualizado, y lo corrija. Lo que sobra se retira (falla cerrada).
-- **Pruebas:** introducir una diferencia a propósito y comprobar que se detecta y se corrige.
-
-### 5.10 Reindexación
-- **Cuándo ocurre:** cambia el modelo de *embeddings*, el chunker o el extractor.
-- **Exige:** reconstruir desde el origen (I4), por versión de derivado, sin mezclar índices incompatibles (cada índice declara modelo, proveedor, dimensiones y versión), y sin servir resultados mezclados de dos generaciones. Un índice se activa cuando está completo.
-- **Pruebas:** reindexar con una consulta en curso; reindexar con un documento revocado entre medias.
-
-### 5.11 Duplicados
-- **Riesgo:** el mismo documento recibido dos veces, o el mismo contenido en dos referencias.
-- **Exige:** la identidad es la referencia de origen, no el contenido; la misma referencia y versión es idempotente. Dos referencias distintas con el mismo contenido son dos documentos (y sus permisos pueden diferir).
-
-### 5.12 Fallos parciales
-- **Riesgo:** un documento a medio indexar, o un lote con elementos que fallan.
-- **Exige:** lo que ya hace hoy el worker (atomicidad por documento, reintentos y fallo definitivo con razón), más no servir un documento hasta que esté completo, y registrar el fallo como evidencia.
-
-### 5.13 Consistencia eventual
-- **Exige:** declarar la ventana de obsolescencia (I7), medirla y mostrarla en la observabilidad. En ningún caso la consistencia eventual puede significar servir lo no autorizado: la capa de consulta (5.6, capa 1) es la que lo garantiza.
-
-### 5.14 Recuperación tras interrupciones
-- **Exige:** poder reanudar tras una caída en cualquier punto: cursor transaccional, trabajos con *lease*, ingestas idempotentes y fragmentos con identificador determinista. **Gran parte de esto ya existe y está probado en Glosa**; lo nuevo es el cursor y la reconciliación.
-
-## 6. Cómo se prueba sin ATLAS
-
-- Se pueden escribir **pruebas de contrato** contra un **doble** (`FakeSource`, `FakeAuthorizationProvider`, `FakeChangeFeed`), siempre **identificado como doble** en su nombre y en su documentación.
-- Un doble prueba que Glosa cumple *su* parte del contrato. **No prueba que ATLAS lo cumpla**, y **no es una prueba de integración**.
-- Las pruebas de integración reales (autorización, revocación, consistencia, fallos, extremo a extremo) esperan a que los contratos existan y estén implementados en **ambos** proyectos (Fase 6 de [`HOJA-DE-RUTA.md`](HOJA-DE-RUTA.md)).
+Se escriben **pruebas de contrato** contra un **doble** identificado como tal. Un doble prueba que Glosa cumple *su* parte, **no que el consumidor cumpla la suya**, y **no es una prueba de integración**. Las pruebas reales (autorización, revocación, consistencia, fallos, extremo a extremo) esperan a que los contratos existan e estén implementados en **ambos** proyectos.
 
 ## 7. Preguntas que hay que responder con ATLAS
 
-1. ¿Existe una operación para obtener el contenido de una versión concreta de un documento, con la decisión de autorización incluida?
-2. ¿Existe una decisión de autorización **por lotes** sobre referencias? ¿Puede responder "no sé"?
-3. ¿Cómo se representa el contexto autorizado de un agente o usuario (formato, emisor, caducidad) y cómo se verifica?
-4. ¿Las versiones de un documento son inmutables y ordenables? ¿Hay una huella del contenido?
-5. ¿Existe un registro de cambios con cursor? ¿Qué garantiza (orden, entrega, repetidos)? ¿Los borrados y las revocaciones son eventos?
-6. ¿Qué semántica tienen los borrados (físicos, lógicos, con *tombstone*)?
-7. ¿Qué transporte y qué autenticación entre sistemas están previstos?
-8. ¿Cómo se versionan los contratos y cómo se descubren las capacidades?
-9. ¿Qué evidencias de auditoría puede recibir ATLAS y en qué forma?
+1. ¿Qué *namespace* e identificador de origen usará? ¿Las versiones son inmutables y hay hash del contenido?
+2. ¿Cómo calculará el ámbito autorizado antes de consultar y cómo será **validable** por Glosa (firma, emisor, caducidad, alcance)?
+3. ¿Validará él los candidatos? ¿Qué procedencia necesita?
+4. ¿Qué garantías ofrecerá su registro de eventos (orden, entrega, repetidos)? ¿Borrados y revocaciones son eventos?
+5. ¿Qué semántica tienen los borrados?
+6. ¿Qué transporte y qué autenticación entre sistemas están previstos?
+7. ¿Cómo se versionan los contratos y se descubren las capacidades?
+8. ¿Qué evidencias de auditoría espera de Glosa?
 
 ## 8. Lo que no se hará
 
-- No crear endpoints ni operaciones de ATLAS que no existan.
-- No inventar contratos a partir de nombres de operaciones.
-- No simular una autorización real con un booleano local.
-- No presentar un doble como prueba de integración.
-- No crear una dependencia obligatoria con ATLAS: Glosa funciona sin él (R10).
-- No modificar nada de ATLAS desde este proyecto.
+No crear endpoints ni operaciones de ATLAS que no existan; no inventar contratos a partir de nombres; no simular una autorización con un booleano local; no presentar un doble como prueba de integración; no crear una dependencia obligatoria con ATLAS (R10); no modificar nada de ATLAS.

@@ -3,10 +3,12 @@
 | Documento | Para qué sirve |
 |---|---|
 | [`SPEC.md`](SPEC.md) | La especificación: arquitectura, dominio, puertos, casos de uso, API, MCP, plantillas y licencia |
+| [`ISSUE-1-ACEPTACION.md`](ISSUE-1-ACEPTACION.md) | Matriz de aceptación de la Issue #1 (perfil neutral): qué se cumple y qué falta |
 | [`ECOSISTEMA.md`](ECOSISTEMA.md) | Qué es Glosa frente a ATLAS: reparto de autoridad, reglas R1–R10 y los modos propio y gobernado |
 | [`AUDITORIA.md`](AUDITORIA.md) | Estado real del proyecto frente a la visión: capacidades, problemas arquitectónicos y riesgos de seguridad |
 | [`INTEGRACION-ATLAS.md`](INTEGRACION-ATLAS.md) | Contratos que Glosa necesita de ATLAS, su estado y los problemas por resolver |
 | [`HOJA-DE-RUTA.md`](HOJA-DE-RUTA.md) | Fases, issues propuestas, dependencias y criterios de aceptación |
+| [`issues/`](issues/G-014-revalidar-permisos-al-ejecutar-un-trabajo.md) | Especificaciones listas para implementar (empezando por G-014) |
 | [`PENDIENTE.md`](PENDIENTE.md) | Lista táctica y viva de lo que falta |
 | [`adr/`](adr/README.md) | Decisiones de arquitectura |
 | [`openapi.yaml`](openapi.yaml) | Contrato de la API (esqueleto) |

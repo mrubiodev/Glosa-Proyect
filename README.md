@@ -12,8 +12,8 @@ El proyecto está en fase de diseño con un núcleo ya implementado.
 
 | Pieza | Estado |
 |-------|--------|
-| Especificación (v0.4.6), ADRs, contrato OpenAPI | Hecho |
-| Visión del ecosistema con ATLAS, auditoría, contratos y hoja de ruta | **Documentados**; la integración **no** está implementada ni verificada |
+| Especificación (v0.4.7), ADRs, contrato OpenAPI | Hecho |
+| Perfil neutral de interoperabilidad (Issue #1) | **Sin escribir; la issue no se puede cerrar.** Hay documentos de ecosistema, auditoría y hoja de ruta |
 | Núcleo: entidades, puertos, permisos, tokens, registro encadenado | Implementado, con tests |
 | Plantillas de cliente (carga, herencia, guardia de producción) | Implementado, con tests |
 | Dockerfile y docker-compose | Hechos |
@@ -59,9 +59,9 @@ Más detalles en [`backend/README.md`](backend/README.md).
 
 Todo el detalle está en [`docs/SPEC.md`](docs/SPEC.md). El índice de toda la documentación está en [`docs/README.md`](docs/README.md).
 
-## Glosa y ATLAS
+## Glosa y los sistemas consumidores
 
-Glosa es un **motor de conocimiento documental**; ATLAS, el sistema de memoria y coordinación con el que debe poder colaborar, conserva la autoridad sobre los documentos originales, la identidad, los permisos y la auditoría. Son independientes y cada uno funciona por sí solo. **La integración con ATLAS está diseñada pero no implementada ni verificada.** Ver [`docs/ECOSISTEMA.md`](docs/ECOSISTEMA.md), [`docs/AUDITORIA.md`](docs/AUDITORIA.md), [`docs/INTEGRACION-ATLAS.md`](docs/INTEGRACION-ATLAS.md) y [`docs/HOJA-DE-RUTA.md`](docs/HOJA-DE-RUTA.md).
+Glosa es un **motor de conocimiento documental** que puede servir a otros sistemas. Es autoridad sobre lo que guarda y sobre el acceso a su propia interfaz; el sistema consumidor conserva la de sus usuarios, sus recursos originales y su ACL. **La interoperabilidad está diseñada pero no implementada ni verificada**, y la [Issue #1](https://github.com/mrubiodev/Glosa-Proyect/issues/1), que pide su perfil neutral, **sigue abierta**: ver [`docs/ISSUE-1-ACEPTACION.md`](docs/ISSUE-1-ACEPTACION.md). El caso concreto de ATLAS está en documentos específicos: [`docs/ECOSISTEMA.md`](docs/ECOSISTEMA.md) e [`docs/INTEGRACION-ATLAS.md`](docs/INTEGRACION-ATLAS.md).
 
 ## Estructura
 
